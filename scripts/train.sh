@@ -1,31 +1,39 @@
 #!/bin/bash
-# # SBATCH -o /home/%u/slogs/sl_%A.out
-# # SBATCH -e /home/%u/slogs/sl_%A.out
-#SBATCH -N 1	  # nodes requested
-#SBATCH -n 1	  # tasks requested
-#SBATCH --gres=gpu:1  # use 1 GPU
-#SBATCH --mem=14000  # memory in Mb
-#SBATCH --partition=ampere
-#SBATCH --account=BMAI-CDT-SL2-GPU
-#SBATCH -t 1-00:00:00  # time requested in hour:minute:seconds
-#SBATCH --cpus-per-gpu=4
+#SBATCH --qos epsrc
+#SBATCH --time 5:59:59
+#SBATCH --nodes 1
+#SBATCH --tasks-per-node 1
+#SBATCH --cpus-per-gpu 4
+#SBATCH --gpus-per-task 4
 
 echo "Job running on ${SLURM_JOB_NODELIST}"
 
 dt=$(date '+%d/%m/%Y %H:%M:%S')
 echo "Job started: $dt"
 
-echo "Setting up bash enviroment"
-source ~/.bashrc
+module purge
+module load baskerville
+module load Miniconda3/4.10.3
+eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
+
+# echo "Setting up bash enviroment"
+# source ~/.bashrc
 #set -e
 #SCRATCH_DISK=/disk/scratch
 #SCRATCH_HOME=${SCRATCH_DISK}/${USER}
 #mkdir -p ${SCRATCH_HOME}
 
 # Activate your conda environment
-CONDA_ENV_NAME=rnaformer
+# Define the path to your existing Conda environment (modify as appropriate)
+CONDA_ENV_NAME=doggy_ai
+# CONDA_ENV_PATH="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/envs/${CONDA_ENV_NAME}"
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
 conda activate ${CONDA_ENV_NAME}
+
+echo "Setting up Wandb API key"
+key=`cat scripts/wandb_key`
+export WANDB_API_KEY=$key
+
 
 echo "Running experiment"
 echo "Config: $1"
@@ -39,4 +47,3 @@ echo "============"
 echo "job finished successfully"
 dt=$(date '+%d/%m/%Y %H:%M:%S')
 echo "Job finished: $dt"
-
