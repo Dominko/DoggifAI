@@ -15,7 +15,7 @@ model_configs:
   hyperparameters:
     max_seq_len: 150
     hidden_dim: 1024
-    nhead: 12
+    nhead: 16
     num_layers: 8
     ff_size: 4096
     regularizers: []
@@ -33,3 +33,5 @@ training_configs:
   random_seed: 1234
   outputs_dir: "train_outputs"
   training_type: "pt"
+  wandb_project: "doggy_ai_pt"
+  wandb_name: "doggy_ai_pt_large"

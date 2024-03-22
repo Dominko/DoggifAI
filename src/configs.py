@@ -24,6 +24,7 @@ class HyperparametersConfigs(BaseModel):
     optimizer: str = "adam"
     learning_rate: float = 0.1
     grad_accumulation_step: int = 1
+    ff_size: int = 2048
     # If not based on LLM
     embedding_dim: Optional[int] = 32
     hidden_dim: Optional[int] = 512
@@ -48,6 +49,8 @@ class SetupConfigs(BaseModel):
     random_seed: int = 1234
     outputs_dir: str = "outputs"
     training_type: str = "pt"
+    wandb_project: str = "doggy_ai"
+    wandb_name: str = "doggy_ai"
 
 class TrainingConfigs(BaseModel):
     dataset_configs: DatasetConfigs

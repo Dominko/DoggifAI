@@ -37,3 +37,5 @@ training_configs:
   random_seed: 1234
   outputs_dir: "ft_train_outputs"
   training_type: "ft"
+  wandb_project: "doggy_ai_ft"
+  wandb_name: "doggy_ai_ft_small"

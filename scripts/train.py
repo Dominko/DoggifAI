@@ -45,7 +45,8 @@ def main():
     print(f"Running on {device}")
 
     wandb.init(
-        project="spike-protein-rna-design",
+        project=configs.training_configs.wandb_project,
+        name=configs.training_configs.wandb_name,
         entity="dominik-grabarczyk",
         mode="online" if args.log_to_wandb else "disabled",
     )
