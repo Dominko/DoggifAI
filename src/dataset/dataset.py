@@ -57,7 +57,7 @@ class SequenceDataset:
                     'prepend_start_token': False,
                     'max_seq_len': self.max_seq_len,
                 },
-                remove_columns=['text']
+                remove_columns=['text'],
             )
         
         self.output_sequences = self.output_sequences.map(

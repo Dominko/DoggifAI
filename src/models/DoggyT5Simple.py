@@ -23,7 +23,7 @@ class DoggyT5Simple(nn.Module):
 
         self.vocab_size = kwargs["vocab_size"]
 
-        # self.padding_idx = kwargs["padding_idx"]
+        self.padding_idx = kwargs["padding_idx"]
         self.start_idx = kwargs["start_idx"]
 
         self.device = device
@@ -80,15 +80,22 @@ class DoggyT5Simple(nn.Module):
         generated_sequences = self.forward(input, output, mask)
         generated_sequences = generated_sequences.view(-1, self.vocab_size)
 
-        loss = F.cross_entropy(generated_sequences, target)
-        return {"loss": loss, "perplexity": torch.exp(loss)}
+        # print(generated_sequences)
+        # print(target)
+
+        # raise Exception()
+
+        loss = F.cross_entropy(generated_sequences, target, ignore_index=self.padding_idx)
+
+        return {"loss": loss, 
+                "perplexity": torch.exp(loss)}
 
     def generate_sequences(
         self, num_sequences, inputs, temperature=1.0, batch_size=None, topk=5
     ):
         self.eval()
         # padding is all ones
-        samples = torch.ones(num_sequences, self.max_seq_len).to(self.device)
+        samples = torch.ones(num_sequences, self.input_length).to(self.device)
 
         if batch_size is None:
             batch_size = num_sequences
@@ -96,16 +103,20 @@ class DoggyT5Simple(nn.Module):
         if batch_size > num_sequences:
             batch_size = num_sequences
 
-        for idx in tqdm(range(0, num_sequences, batch_size)):
-
-            input_sequences = torch.LongTensor([self.start_idx] * batch_size).unsqueeze(
-                dim=1
-            )
+        for idx in range(0, num_sequences, batch_size):
+            if self.start_idx == 0:
+                input_sequences = torch.LongTensor([self.start_idx] * batch_size).unsqueeze(
+                    dim=1
+                )
+            else:
+                input_sequences = inputs[:,0].unsqueeze(
+                    dim=1
+                )
             input_sequences = input_sequences.to(self.device)
 
-            inputs = inputs.repeat(batch_size, 1).to(self.device)
+            inputs = inputs.to(self.device)
 
-            for i in tqdm(range(self.max_seq_len)):
+            for i in range(self.input_length):
                 out = self.forward(inputs, input_sequences)
                 out = out[:, -1, :] / temperature
                 out = F.softmax(out, dim=-1)

@@ -12,6 +12,7 @@ from torch import nn
 
 from ..configs import TestingConfigs, TrainingConfigs
 
+import re
 
 def setup_experiment_folder(outputs_dir: str) -> Tuple[str, str]:
     """
@@ -147,3 +148,22 @@ def is_gene_valid(seq):
         return False
     
     return True
+
+def strip_tags(sequence):
+    sequence = re.sub("<[^>]+>", "", sequence)
+    return sequence.replace(" ", "")
+
+def reconstruct_sequence(sequence, cdrs ):
+    # Get CDRs
+    cdrs = cdrs[cdrs.find(">")+1:]
+    cdr_1 = cdrs[:cdrs.find("<")]
+    cdrs = cdrs[cdrs.find(">")+1:]
+    cdr_2 = cdrs[:cdrs.find("<")]
+    cdrs = cdrs[cdrs.find(">")+1:]
+    cdr_3 = cdrs[:cdrs.find("<")]
+
+    # Replace tags in sequence with CDRs
+    sequence = sequence.replace("<H-CDR-1>", cdr_1).replace("<H-CDR-2>", cdr_2).replace("<H-CDR-3>", cdr_3)
+    sequence = strip_tags(sequence)
+    
+    return sequence

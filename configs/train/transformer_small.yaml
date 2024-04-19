@@ -30,3 +30,8 @@ training_configs:
   device: 0
   random_seed: 1234
   outputs_dir: "train_outputs"
+validation_configs:
+  substitution_matrix: "PAM30"
+  gap_insertion_penalty: -11
+  gap_extension_penalty: -1
+  top_k: 1

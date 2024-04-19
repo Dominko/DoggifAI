@@ -35,3 +35,8 @@ training_configs:
   training_type: "pt"
   wandb_project: "doggy_ai_pt"
   wandb_name: "doggy_ai_pt_large"
+validation_configs:
+  substitution_matrix: "PAM30"
+  gap_insertion_penalty: -11
+  gap_extension_penalty: -1
+  top_k: 1

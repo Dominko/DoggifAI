@@ -52,11 +52,17 @@ class SetupConfigs(BaseModel):
     wandb_project: str = "doggy_ai"
     wandb_name: str = "doggy_ai"
 
+class ValidationConfigs(BaseModel):
+    substitution_matrix: str = "PAM30"
+    gap_insertion_penalty: int = -11
+    gap_extension_penalty: int = -1
+    top_k: int = 5
+
 class TrainingConfigs(BaseModel):
     dataset_configs: DatasetConfigs
     model_configs: ModelConfigs
     training_configs: SetupConfigs
-
+    validation_configs: ValidationConfigs
 
 class TestingConfigs(BaseModel):
     random_seed: int = 1234

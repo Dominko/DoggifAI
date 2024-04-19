@@ -38,3 +38,8 @@ training_configs:
   training_type: "ft"
   wandb_project: "doggy_ai_ft"
   wandb_name: "doggy_ai_ft_large"
+validation_configs:
+  substitution_matrix: "PAM30"
+  gap_insertion_penalty: -11
+  gap_extension_penalty: -1
+  top_k: 1
