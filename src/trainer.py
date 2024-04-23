@@ -286,10 +286,6 @@ class Trainer:
                         target = strip_tags(targets[i])
                         sample = strip_tags(samples[i])
 
-                    print(target)
-                    print(sample)
-                    raise Exception()
-
                     if len(sample) == 0:
                         continue
                     alignment = aligner.align(target, 
