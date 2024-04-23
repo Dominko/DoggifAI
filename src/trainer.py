@@ -276,6 +276,8 @@ class Trainer:
                 cdrs = self.tokenizer.batch_decode(batch_input_sequences)
                 # Compute local alignment scores
                 for i in range(len(batch_input_sequences)):
+
+                    print(targets[i])
                     
                     if self.configs.training_configs.training_type == "ft":
                         target = reconstruct_sequence(targets[i], cdrs[i])
@@ -283,6 +285,10 @@ class Trainer:
                     else:
                         target = strip_tags(targets[i])
                         sample = strip_tags(samples[i])
+
+                    print(target)
+                    print(sample)
+                    raise Exception()
 
                     if len(sample) == 0:
                         continue
