@@ -1,0 +1,6 @@
+device: 0
+random_seed: 1234
+outputs_dir: "sample_outputs"
+pretrained_model_state_dict_path: train_outputs/2024_03_06__20_33_16/checkpoint_10.pt
+pretrained_model_configs_path: train_outputs/2024_03_06__20_33_16/configs.yaml
+input_path: ./datasets/doggy_data/sample_gen

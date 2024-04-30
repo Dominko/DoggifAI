@@ -18,10 +18,8 @@ def shift_tokens_right(input_ids: np.array, pad_token_id: int, decoder_start_tok
     Shift input ids one token to the right.
     """
     shifted_input_ids = np.zeros_like(input_ids)
-    print(shifted_input_ids)
     shifted_input_ids[:, 1:] = input_ids[:, :-1]
 
-    print(shifted_input_ids)
     shifted_input_ids[:, 0] = decoder_start_token_id
 
     shifted_input_ids = np.where(shifted_input_ids == -100, pad_token_id, shifted_input_ids)
@@ -113,9 +111,15 @@ class DataCollatorForT5MLM:
         # dummy = np.zeros((len(examples), self.input_length))
 
         mask_indices = []
+        unpadded_mask = []
         for i in range(len(examples)):
-            mask_index = self.random_spans_noise_mask(len(examples[i]["input_ids"]))
+            unpadded_len = len(examples[i]["input_ids"])
+            
+            mask_index = self.random_spans_noise_mask(unpadded_len)
             padding_len = self.input_length - len(mask_index)
+
+            unpadded_mask.append(np.pad(np.ones(unpadded_len, dtype=np.int8), pad_width=(0, padding_len), mode="constant", constant_values=0))
+
             mask_index = np.pad(mask_index, pad_width=(0, padding_len), mode="constant", constant_values=False)
             mask_indices.append(mask_index)
 
@@ -123,9 +127,9 @@ class DataCollatorForT5MLM:
 
             # print("\r\n" + str(len(mask_indices[0])) + "\r\n")
             # print(str(len(examples[i]["input_ids"])))
-
         
         mask_indices = np.asarray(mask_indices)
+        unpadded_mask = np.asarray(unpadded_mask)
 
         labels_mask = ~mask_indices
 
@@ -144,10 +148,7 @@ class DataCollatorForT5MLM:
         # print(input_ids.shape)        
 
         input_ids_sentinel = self.create_sentinel_ids(mask_indices.astype(np.int8))
-
-        # print(input_ids_sentinel[0]) 
-
-        labels_sentinel = self.create_sentinel_ids(labels_mask.astype(np.int8))
+        labels_sentinel = self.create_target_sentinel_ids(labels_mask.astype(np.int8), unpadded_mask)
 
         batch["input_ids"] = self.filter_input_ids(input_ids, input_ids_sentinel, self.input_length)
         batch["labels"] = self.filter_input_ids(input_ids, labels_sentinel, self.target_length)
@@ -178,7 +179,25 @@ class DataCollatorForT5MLM:
         The start indices of each mask are replaced by the sentinel ids in increasing
         order. Consecutive mask indices to be deleted are replaced with `-1`.
         """
+        
         start_indices = mask_indices - np.roll(mask_indices, 1, axis=-1) * mask_indices
+        start_indices[:, 0] = mask_indices[:, 0]
+
+        sentinel_ids = np.where(start_indices != 0, np.cumsum(start_indices, axis=-1), start_indices)
+        sentinel_ids = np.where(sentinel_ids != 0, (len(self.tokenizer) - sentinel_ids), 0)
+        sentinel_ids -= mask_indices - start_indices
+
+        return sentinel_ids
+
+    def create_target_sentinel_ids(self, mask_indices, unpadded_mask):
+        """
+        Sentinel ids creation given the indices that should be masked.
+        The start indices of each mask are replaced by the sentinel ids in increasing
+        order. Consecutive mask indices to be deleted are replaced with `-1`.
+        """
+        start_indices = mask_indices - np.roll(mask_indices, 1, axis=-1) * mask_indices
+        start_indices = start_indices * unpadded_mask
+
         start_indices[:, 0] = mask_indices[:, 0]
 
         sentinel_ids = np.where(start_indices != 0, np.cumsum(start_indices, axis=-1), start_indices)
@@ -195,6 +214,8 @@ class DataCollatorForT5MLM:
         batch_size = input_ids.shape[0]
 
         input_ids_full = np.where(sentinel_ids != 0, sentinel_ids, input_ids)
+
+        
         
         # input_ids tokens and sentinel tokens are >= 0, tokens < 0 are
         # masked tokens coming after sentinel tokens and should be removed
@@ -202,7 +223,7 @@ class DataCollatorForT5MLM:
         for input_id in input_ids_full:
             padding_len = len(input_id[input_id<0])
             input_id = np.pad(input_id[input_id >= 0], pad_width=(self.tokenizer.pad_token_id, padding_len), mode="constant", constant_values=False)
-            input_id[np.argwhere(input_id==self.tokenizer.pad_token_id)[0]] = self.tokenizer.eos_token_id
+            # input_id[np.argwhere(input_id==self.tokenizer.pad_token_id)[0]] = self.tokenizer.eos_token_id
             input_ids.append(input_id[:out_length])
 
         # Sanity check to make sure length is correct
@@ -240,6 +261,7 @@ class DataCollatorForT5MLM:
         orig_length = length
 
         num_noise_tokens = int(np.round(length * self.noise_density))
+
         # avoid degeneracy by ensuring positive numbers of noise and nonnoise tokens.
         num_noise_tokens = min(max(num_noise_tokens, 1), length - 1)
         num_noise_spans = int(np.round(num_noise_tokens / self.mean_noise_span_length))
@@ -272,6 +294,7 @@ class DataCollatorForT5MLM:
         interleaved_span_lengths = np.reshape(
             np.stack([nonnoise_span_lengths, noise_span_lengths], axis=1), [num_noise_spans * 2]
         )
+
         span_starts = np.cumsum(interleaved_span_lengths)[:-1]
         span_start_indicator = np.zeros((length,), dtype=np.int8)
         span_start_indicator[span_starts] = True

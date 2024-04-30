@@ -16,7 +16,7 @@ from .models.DoggyT5Simple import DoggyT5Simple
 from transformers import PreTrainedTokenizer
 from transformers import BatchEncoding
 
-from .utils.common_utils import reconstruct_sequence, strip_tags
+from .utils.common_utils import reconstruct_pt_sequence, reconstruct_ft_sequence
 
 import torch_optimizer
 
@@ -109,12 +109,11 @@ class Trainer:
             nn.Module: The model to be trained
         """
 
-        print(self.tokenizer.pad_token_id)
-
         kwargs = {}
         if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
             kwargs.update(
                 {"start_idx": self.start_idx,
+                 "end_idx": self.tokenizer.eos_token_id,
                  "padding_idx": self.tokenizer.pad_token_id,
                  "vocab_size": self.tokenizer.vocab_size,
                  "target_length": self.target_length}
@@ -204,6 +203,7 @@ class Trainer:
                 total_loss = {"combined_loss": 0, 
                             "perplexity": 0,
                             "avg_alignment_score": 0,
+                            "avg_alignment_loss": 0,
                             "avg_charge_at_pH7": 0,
                             "avg_gravy": 0,
                             "avg_instability_index": 0,
@@ -274,14 +274,21 @@ class Trainer:
                 samples = self.tokenizer.batch_decode(samples)
                 targets = self.tokenizer.batch_decode(batch_output_sequences)
                 cdrs = self.tokenizer.batch_decode(batch_input_sequences)
+
+                # if (epoch == 3):
+                # print(samples[1])
+                # print(targets[1])
+                # print(cdrs[1])
+                # raise Exception()
+
                 # Compute local alignment scores
                 for i in range(len(batch_input_sequences)):                    
                     if self.configs.training_configs.training_type == "ft":
-                        target = reconstruct_sequence(targets[i], cdrs[i])
-                        sample = reconstruct_sequence(samples[i], cdrs[i])
+                        target = reconstruct_ft_sequence(targets[i], cdrs[i])
+                        sample = reconstruct_ft_sequence(samples[i], cdrs[i])
                     else:
-                        target = strip_tags(targets[i])
-                        sample = strip_tags(samples[i])
+                        target = reconstruct_pt_sequence(cdrs[i], targets[i])
+                        sample = reconstruct_pt_sequence(cdrs[i], samples[i])
 
                     if len(sample) == 0:
                         continue
@@ -290,6 +297,10 @@ class Trainer:
                     if len(alignment) == 0:
                         continue
                     alignment_score = alignment[0].score
+
+                    alignment_target = aligner.align(target, 
+                                                target)
+                    alignment_target = alignment_target[0].score
                     protein_params = ProtParam.ProteinAnalysis(sample)
                     charge_at_pH7 = protein_params.charge_at_pH(7)
                     gravy = protein_params.gravy()
@@ -303,6 +314,7 @@ class Trainer:
                     org_molecular_weight = org_protein_params.molecular_weight()
 
                     total_loss["avg_alignment_score"] += alignment_score / data_length
+                    total_loss["avg_alignment_loss"] += (alignment_target - alignment_score) / data_length
                     total_loss["avg_charge_at_pH7"] += charge_at_pH7 / data_length
                     total_loss["avg_gravy"] += gravy / data_length
                     total_loss["avg_instability_index"] += instability_index / data_length
@@ -322,6 +334,26 @@ class Trainer:
 
         total_loss["combined_loss"] = total_loss["combined_loss"] / total_examples
         total_loss["perplexity"] = total_loss["perplexity"] / total_examples
+
+        # if data_split == "val":
+        #     data_loader = DataLoader(
+        #         dataset,
+        #         len(dataset),
+        #         collate_fn=dataset.getCollator(),
+        #         shuffle=True,
+        #     )
+        #     iter, full_batch = next(enumerate(data_loader))
+
+        #     if self.configs.training_configs.training_type == "ft":
+        #         # batch_input_sequences, batch_output_sequences = batch
+        #         batch_input_sequences = full_batch["input_ids"].to(self.device)
+        #         batch_output_sequences = full_batch["output_ids"].to(self.device)
+        #     elif self.configs.training_configs.training_type == "pt":
+        #         batch_output_sequences = full_batch["labels"].to(self.device)
+        #         batch_input_sequences = full_batch["input_ids"].to(self.device)
+
+
+            
 
         return total_loss
         # return {

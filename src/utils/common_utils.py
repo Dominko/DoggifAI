@@ -153,7 +153,7 @@ def strip_tags(sequence):
     sequence = re.sub("<[^>]+>", "", sequence)
     return sequence.replace(" ", "")
 
-def reconstruct_sequence(sequence, cdrs ):
+def reconstruct_ft_sequence(sequence, cdrs ):
     # Get CDRs
     cdrs = cdrs[cdrs.find(">")+1:]
     cdr_1 = cdrs[:cdrs.find("<")]
@@ -167,3 +167,37 @@ def reconstruct_sequence(sequence, cdrs ):
     sequence = strip_tags(sequence)
     
     return sequence
+
+extra_id_template = "<extra_id_?>"
+extra_id_len = len(extra_id_template)
+
+def reconstruct_pt_sequence(sequence, generated ):
+    sequence = sequence.replace(" ", "")
+    generated = generated.replace(" ", "")
+    i = 0
+    reconstructed = sequence
+    while True:
+        # Find next id in input
+        extra_id = extra_id_template.replace("?", str(i))
+        
+        idx = sequence.find(extra_id)
+
+        # Check if extra id exsits
+        if idx == -1:
+            return strip_tags(reconstructed)
+
+        # Find extra id in generated
+        start_idx = generated.find(extra_id)
+        # If extra id is not found, skip (i.e. replace with "")
+        if start_idx == -1:
+            i += 1
+            continue
+        generated = generated[start_idx+extra_id_len:]
+        end_idx = generated.find("<")
+        if start_idx == -1:
+            end_idx = len(generated)-1
+
+        chunk = generated[:end_idx]
+        reconstructed = reconstructed.replace(extra_id, chunk)
+
+        i += 1

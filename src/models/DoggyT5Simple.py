@@ -9,6 +9,8 @@ from src.configs import ModelConfigs
 from src.constants import AA_DICT
 from src.utils.model_utils import generate_square_subsequent_mask
 
+import numpy as np
+
 class DoggyT5Simple(nn.Module):
     def __init__(self, model_configs: ModelConfigs, device=None, **kwargs):
         super().__init__()
@@ -25,6 +27,7 @@ class DoggyT5Simple(nn.Module):
 
         self.padding_idx = kwargs["padding_idx"]
         self.start_idx = kwargs["start_idx"]
+        self.end_idx = kwargs["end_idx"]
 
         self.device = device
 
@@ -91,7 +94,7 @@ class DoggyT5Simple(nn.Module):
                 "perplexity": torch.exp(loss)}
 
     def generate_sequences(
-        self, num_sequences, inputs, temperature=1.0, batch_size=None, topk=5
+        self, num_sequences, inputs, temperature=1.0, batch_size=None, topk=5, trim_to_eos=True
     ):
         self.eval()
         # padding is all ones
@@ -131,8 +134,19 @@ class DoggyT5Simple(nn.Module):
                     (input_sequences, new_input_sequences), dim=1
                 )
 
-        return samples
+        if trim_to_eos:
+            samples = samples.detach().cpu().numpy()
+            for i in range(0, len(samples)):
+                # Fidn the eos token
+                indices = np.argwhere(samples[i]==self.end_idx)
+                if len(indices) == 0:
+                    continue
+                idx = indices[0][0]
+                samples[i][idx+1:] = self.padding_idx
+            
+            samples = torch.from_numpy(samples).to(self.device)
 
+        return samples
 
 class PositionalEncoder(nn.Module):
     def __init__(self, hidden_dim, dropout, max_seq_len=1300, device=None):
