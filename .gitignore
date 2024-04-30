@@ -167,7 +167,7 @@ datasets/
 
 outputs/
 
-scrips/wandb_key
+scripts/wandb_key
 
 .DS_Store
 
