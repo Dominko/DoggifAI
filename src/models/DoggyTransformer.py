@@ -119,7 +119,6 @@ class DoggyTransformer(nn.Module):
     def generate_sequences(
         self, num_sequences, inputs, temperature=1.0, batch_size=None, topk=5
     ):
-        self.eval()
         # padding is all ones
         samples = torch.ones(num_sequences, self.max_seq_len).to(self.device)
 

@@ -198,6 +198,18 @@ class Trainer:
             if data_split == "train":
                 total_loss = {"combined_loss": 0, 
                             "perplexity": 0,
+                            "avg_alignment_score": 0,
+                            "avg_alignment_loss": 0,
+                            "avg_charge_at_pH7": 0,
+                            "avg_gravy": 0,
+                            "avg_instability_index": 0,
+                            "avg_molecular_weight": 0,
+                            "avg_charge_at_pH7_dev": 0,
+                            "avg_gravy_dev": 0,
+                            "avg_instability_index_dev": 0,
+                            "avg_molecular_weight_dev": 0,
+                            "empty_sequences": 0,
+                            "not_aligned": 0
                             }
             elif data_split == "val":
                 total_loss = {"combined_loss": 0, 
@@ -212,9 +224,12 @@ class Trainer:
                             "avg_gravy_dev": 0,
                             "avg_instability_index_dev": 0,
                             "avg_molecular_weight_dev": 0,
+                            "empty_sequences": 0,
+                            "not_aligned": 0
                             }
 
         total_examples = 0
+        valid_length = 0
         for iteration, batch in tqdm.tqdm(
             enumerate(data_loader),
             desc=f"EPOCH {epoch}, {data_split}, batch ",
@@ -222,6 +237,10 @@ class Trainer:
             total=len(data_loader),
             disable=self.verbose,
         ):
+            if data_split == "train":
+                self.model.train()
+            else:
+                self.model.eval()
             # Load data to GPU
             # batch_sequences = batch
             if self.configs.training_configs.training_type == "ft":
@@ -266,20 +285,30 @@ class Trainer:
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
-            if data_split == "val":
+            # Accumulate epoch loss
+            num_examples = batch_input_sequences.size(0)
+            if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
+                total_loss["combined_loss"] += combined_loss.item() * num_examples
+                total_loss["perplexity"] += perplexity.item() * num_examples
+            total_examples += num_examples
+
+            if (data_split == "val" or data_split == "train") and iteration < 100:
+                self.model.eval()
                 samples = self.model.generate_sequences(len(batch_input_sequences), 
                                                         batch_input_sequences, 
                                                         temperature=1.0, 
                                                         topk=self.configs.validation_configs.top_k)
+                if data_split == "train":
+                    self.model.train()
+                else:
+                    self.model.eval()
                 samples = self.tokenizer.batch_decode(samples)
                 targets = self.tokenizer.batch_decode(batch_output_sequences)
                 cdrs = self.tokenizer.batch_decode(batch_input_sequences)
 
-                # if (epoch == 3):
-                # print(samples[1])
-                # print(targets[1])
-                # print(cdrs[1])
-                # raise Exception()
+                # print(targets[0])
+                # print(samples[0])
+                # print(cdrs[0])
 
                 # Compute local alignment scores
                 for i in range(len(batch_input_sequences)):                    
@@ -290,13 +319,20 @@ class Trainer:
                         target = reconstruct_pt_sequence(cdrs[i], targets[i])
                         sample = reconstruct_pt_sequence(cdrs[i], samples[i])
 
+                    # print(target)
+                    # print(sample)
+
                     if len(sample) == 0:
+                        total_loss["empty_sequences"] +=1
                         continue
+                    valid_length += 1
                     alignment = aligner.align(target, 
                                                 sample)
                     if len(alignment) == 0:
-                        continue
-                    alignment_score = alignment[0].score
+                        alignment_score = 0
+                        total_loss["not_aligned"] +=1
+                    else:
+                        alignment_score = alignment[0].score
 
                     alignment_target = aligner.align(target, 
                                                 target)
@@ -313,24 +349,29 @@ class Trainer:
                     org_instability_index = org_protein_params.instability_index()
                     org_molecular_weight = org_protein_params.molecular_weight()
 
-                    total_loss["avg_alignment_score"] += alignment_score / data_length
-                    total_loss["avg_alignment_loss"] += (alignment_target - alignment_score) / data_length
-                    total_loss["avg_charge_at_pH7"] += charge_at_pH7 / data_length
-                    total_loss["avg_gravy"] += gravy / data_length
-                    total_loss["avg_instability_index"] += instability_index / data_length
-                    total_loss["avg_molecular_weight"] += molecular_weight / data_length
+                    total_loss["avg_alignment_score"] += alignment_score
+                    total_loss["avg_alignment_loss"] += (alignment_target - alignment_score)
+                    total_loss["avg_charge_at_pH7"] += charge_at_pH7
+                    total_loss["avg_gravy"] += gravy
+                    total_loss["avg_instability_index"] += instability_index
+                    total_loss["avg_molecular_weight"] += molecular_weight
 
-                    total_loss["avg_charge_at_pH7_dev"] += (charge_at_pH7 - org_charge_at_pH7) / data_length
-                    total_loss["avg_gravy_dev"] += (gravy - org_gravy) / data_length
-                    total_loss["avg_instability_index_dev"] += (instability_index - org_instability_index) / data_length
-                    total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight) / data_length
+                    total_loss["avg_charge_at_pH7_dev"] += (charge_at_pH7 - org_charge_at_pH7)
+                    total_loss["avg_gravy_dev"] += (gravy - org_gravy)
+                    total_loss["avg_instability_index_dev"] += (instability_index - org_instability_index)
+                    total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight)
 
-            # Accumulate epoch loss
-            num_examples = batch_input_sequences.size(0)
-            if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
-                total_loss["combined_loss"] += combined_loss.item() * num_examples
-                total_loss["perplexity"] += perplexity.item() * num_examples
-            total_examples += num_examples
+        total_loss["avg_alignment_score"] /= valid_length
+        total_loss["avg_alignment_loss"] /= valid_length
+        total_loss["avg_charge_at_pH7"] /= valid_length
+        total_loss["avg_gravy"] /= valid_length
+        total_loss["avg_instability_index"] /= valid_length
+        total_loss["avg_molecular_weight"] /= valid_length
+
+        total_loss["avg_charge_at_pH7_dev"] /= valid_length
+        total_loss["avg_gravy_dev"] /= valid_length
+        total_loss["avg_instability_index_dev"] /= valid_length
+        total_loss["avg_molecular_weight_dev"] /= valid_length
 
         total_loss["combined_loss"] = total_loss["combined_loss"] / total_examples
         total_loss["perplexity"] = total_loss["perplexity"] / total_examples
