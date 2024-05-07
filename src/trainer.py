@@ -282,6 +282,15 @@ class Trainer:
             batch_provided_output_sequences = batch_output_sequences[:,:-1]
             batch_expected_output_sequences = batch_output_sequences[:,1:]
 
+            # print(batch_output_sequences[0])
+            # print(batch_provided_output_sequences[0])
+            # print(batch_expected_output_sequences[0])
+
+            # # print(self.tokenizer.batch_decode(batch_output_sequences)[0])
+            # # print(self.tokenizer.batch_decode(batch_provided_output_sequences)[0])
+            # print(self.tokenizer.batch_decode(batch_expected_output_sequences)[0])
+            # raise Exception()
+
             outputs = self.model(batch_input_sequences, batch_provided_output_sequences)
 
             # raise Exception()

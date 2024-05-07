@@ -61,6 +61,7 @@ class SequenceDatasetS2S:
                     'prepend_start_token': self.prepend_start_token,
                 },
                 remove_columns=['text'],
+                load_from_cache_file=False
             )
         
         # print(self.sequences[0]["input_ids"])
@@ -107,8 +108,12 @@ def tokenize_function(examples, tokenizer, prepend_start_token):
             # pad_to_multiple_of=in_length,
             # padding=PaddingStrategy.DO_NOT_PAD,
         )
+        
 
         for i in range(0, len(tokenizer_out["input_ids"])):
+            # Remove fantom whitespace
+            tokenizer_out["input_ids"][i] = tokenizer_out["input_ids"][i][1:]
+
             if prepend_start_token:
                 tokenizer_out["input_ids"][i].insert(0, tokenizer.bos_token_id)
 

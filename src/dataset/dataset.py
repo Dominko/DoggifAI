@@ -58,6 +58,7 @@ class SequenceDataset:
                     'max_seq_len': self.max_seq_len,
                 },
                 remove_columns=['text'],
+                load_from_cache_file=False
             )
         
         self.output_sequences = self.output_sequences.map(
@@ -68,7 +69,8 @@ class SequenceDataset:
                     'prepend_start_token': self.prepend_start_token,
                     'max_seq_len': self.max_seq_len,
                 },
-                remove_columns=['text']
+                remove_columns=['text'],
+                load_from_cache_file=False
             )
         
         self.sequences = self.sequences.add_column("output_ids", self.output_sequences["input_ids"])
@@ -87,11 +89,14 @@ class SequenceDataset:
 def tokenize_function(examples, tokenizer, prepend_start_token, max_seq_len):
     tokenizer_out = tokenizer(
         text=examples["text"],
-        return_attention_mask=False,
+        return_attention_mask=False
     )
 
     # Pad
     for i in range(0, len(tokenizer_out["input_ids"])):
+        # Remove fantom whitespace
+        tokenizer_out["input_ids"][i] = tokenizer_out["input_ids"][i][1:]
+
         if prepend_start_token:
             tokenizer_out["input_ids"][i].insert(0, tokenizer.bos_token_id)
         

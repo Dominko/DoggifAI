@@ -1,10 +1,10 @@
 dataset_configs:
   train:
-    input_sequences_path: ./datasets/doggy_data/train_ft_input_tiny
-    output_sequences_path: ./datasets/doggy_data/train_ft_output_tiny
+    input_sequences_path: ./datasets/doggy_data/train_ft_input
+    output_sequences_path: ./datasets/doggy_data/train_ft_output
   val:
-    input_sequences_path: ./datasets/doggy_data/train_ft_input_tiny
-    output_sequences_path: ./datasets/doggy_data/train_ft_output_tiny
+    input_sequences_path: ./datasets/doggy_data/val_ft_input
+    output_sequences_path: ./datasets/doggy_data/val_ft_output
   test:
     input_sequences_path: ./datasets/doggy_data/test_ft_input
     output_sequences_path: ./datasets/doggy_data/test_ft_output
