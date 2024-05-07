@@ -149,6 +149,11 @@ class Trainer:
                 lr=self.configs.model_configs.hyperparameters.learning_rate,
                 beta1=self.configs.model_configs.hyperparameters.beta1
             )
+        elif optimizer == "SGD":
+            return torch.optim.SGD(
+                list(self.model.parameters()),
+                lr=self.configs.model_configs.hyperparameters.learning_rate
+            )
         else:
             raise NotImplementedError(f"Optimizer {optimizer} is not implemented")
 
@@ -229,7 +234,10 @@ class Trainer:
                             }
 
         total_examples = 0
-        valid_length = 0
+        valid_length = 9
+        # TEST
+        loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
+
         for iteration, batch in tqdm.tqdm(
             enumerate(data_loader),
             desc=f"EPOCH {epoch}, {data_split}, batch ",
@@ -259,11 +267,33 @@ class Trainer:
             # print(batch_output_sequences[2])
             # print(self.tokenizer.decode(batch_output_sequences[2]))
 
-            # Run one step of training
-            outputs = self.model.step(batch_input_sequences, batch_output_sequences)
-            if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
-                combined_loss = outputs["loss"]
-                perplexity = outputs["perplexity"]
+            ######## Run one step of training V1
+            # if epoch == 999:
+            #     outputs = self.model.step(batch_input_sequences, batch_output_sequences, debug=True)
+            # else:
+            #     outputs = self.model.step(batch_input_sequences, batch_output_sequences, debug=False)
+            # if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
+            #     combined_loss = outputs["loss"]
+            #     perplexity = outputs["perplexity"]
+            ########
+
+            ######## Run one step of training V2
+            # Now we shift the tgt by one so with the <SOS> we predict the token at pos 1
+            batch_provided_output_sequences = batch_output_sequences[:,:-1]
+            batch_expected_output_sequences = batch_output_sequences[:,1:]
+
+            outputs = self.model(batch_input_sequences, batch_provided_output_sequences)
+
+            # raise Exception()
+            outputs = outputs.permute(0, 2, 1)
+
+            # print(outputs.shape)
+            # print(batch_expected_output_sequences.shape)
+            # print(self.tokenizer.batch_decode(batch_expected_output_sequences)[0])
+            # raise Exception()
+            
+            combined_loss = loss_fn(outputs, batch_expected_output_sequences)
+            ########
 
             # Stop training if loss becomes inf or nan
             if torch.isinf(combined_loss):
@@ -289,7 +319,7 @@ class Trainer:
             num_examples = batch_input_sequences.size(0)
             if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
                 total_loss["combined_loss"] += combined_loss.item() * num_examples
-                total_loss["perplexity"] += perplexity.item() * num_examples
+                # total_loss["perplexity"] += perplexity.item() * num_examples
             total_examples += num_examples
 
             if (data_split == "val" or data_split == "train") and iteration < 100:
@@ -306,10 +336,6 @@ class Trainer:
                 targets = self.tokenizer.batch_decode(batch_output_sequences)
                 cdrs = self.tokenizer.batch_decode(batch_input_sequences)
 
-                # print(targets[0])
-                # print(samples[0])
-                # print(cdrs[0])
-
                 # Compute local alignment scores
                 for i in range(len(batch_input_sequences)):                    
                     if self.configs.training_configs.training_type == "ft":
@@ -318,9 +344,6 @@ class Trainer:
                     else:
                         target = reconstruct_pt_sequence(cdrs[i], targets[i])
                         sample = reconstruct_pt_sequence(cdrs[i], samples[i])
-
-                    # print(target)
-                    # print(sample)
 
                     if len(sample) == 0:
                         total_loss["empty_sequences"] +=1

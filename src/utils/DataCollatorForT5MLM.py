@@ -150,8 +150,8 @@ class DataCollatorForT5MLM:
         input_ids_sentinel = self.create_sentinel_ids(mask_indices.astype(np.int8))
         labels_sentinel = self.create_target_sentinel_ids(labels_mask.astype(np.int8), unpadded_mask)
 
-        batch["input_ids"] = self.filter_input_ids(input_ids, input_ids_sentinel, self.input_length)
-        batch["labels"] = self.filter_input_ids(input_ids, labels_sentinel, self.target_length)
+        batch["input_ids"] = self.filter_input_ids(input_ids, input_ids_sentinel, self.input_length, prepend_bos=False)
+        batch["labels"] = self.filter_input_ids(input_ids, labels_sentinel, self.target_length, prepend_bos=True)
 
         # print("\r\n" + self.tokenizer.decode(batch["labels"][0]) + "\r\n")
 
@@ -206,7 +206,7 @@ class DataCollatorForT5MLM:
 
         return sentinel_ids
 
-    def filter_input_ids(self, input_ids, sentinel_ids, out_length):
+    def filter_input_ids(self, input_ids, sentinel_ids, out_length, prepend_bos=True):
         """
         Puts sentinel mask on `input_ids` and fuse consecutive mask tokens into a single mask token by deleting.
         This will reduce the sequence length from `expanded_inputs_length` to `input_length`.
@@ -215,7 +215,8 @@ class DataCollatorForT5MLM:
 
         input_ids_full = np.where(sentinel_ids != 0, sentinel_ids, input_ids)
 
-        
+        if prepend_bos:
+            input_ids_full = np.insert(input_ids_full, 0, self.decoder_start_token_id, axis=1)
         
         # input_ids tokens and sentinel tokens are >= 0, tokens < 0 are
         # masked tokens coming after sentinel tokens and should be removed

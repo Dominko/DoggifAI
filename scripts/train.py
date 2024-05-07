@@ -63,7 +63,7 @@ def main():
         if configs.training_configs.training_type == "ft":
             prepend_start_token = False
         else: 
-            prepend_start_token = True
+            prepend_start_token = False
 
     expanded_inputs_length, target_length = compute_t5_input_and_target_lengths(
             inputs_length=configs.model_configs.hyperparameters.max_seq_len,

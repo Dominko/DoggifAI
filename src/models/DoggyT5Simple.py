@@ -9,6 +9,8 @@ from src.configs import ModelConfigs
 from src.constants import AA_DICT
 from src.utils.model_utils import generate_square_subsequent_mask
 
+import math
+
 import numpy as np
 
 class DoggyT5Simple(nn.Module):
@@ -22,6 +24,7 @@ class DoggyT5Simple(nn.Module):
         self.nhead = model_configs.hyperparameters.nhead
         self.num_layers = model_configs.hyperparameters.num_layers
         self.dropout = model_configs.hyperparameters.dropout
+        self.ff_size = model_configs.hyperparameters.ff_size
 
         self.vocab_size = kwargs["vocab_size"]
 
@@ -34,61 +37,82 @@ class DoggyT5Simple(nn.Module):
         self._build_model()
 
     def _build_model(self):
-        self.input_embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
+        self.embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
 
-        self.output_embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
+        # self.output_embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
 
-        self.input_positional_embedding = PositionalEncoder(
+        self.positional_embedding = PositionalEncoder(
             self.hidden_dim, self.dropout, self.input_length, self.device
         )
 
-        self.output_positional_embedding = PositionalEncoder(
-            self.hidden_dim, self.dropout, self.input_length, self.device
-        )
+        # self.output_positional_embedding = PositionalEncoder(
+        #     self.hidden_dim, self.dropout, self.input_length, self.device
+        # )
         
         self.transformer = nn.Transformer(
             d_model=self.hidden_dim,
             nhead=self.nhead,
             num_decoder_layers=self.num_layers,
             num_encoder_layers=self.num_layers,
-            dim_feedforward=self.hidden_dim,
+            dim_feedforward=self.ff_size,
             dropout=self.dropout,
             batch_first=True
         )
 
+        self.linear = nn.Linear(self.hidden_dim, self.vocab_size)
+
     def forward(self, input_sequence, output_sequence, mask=None):
 
-        input_embedded = self.input_embedding(input_sequence)
-        input_positioned = self.input_positional_embedding(input_embedded)
+        input_embedded = self.embedding(input_sequence) * math.sqrt(self.hidden_dim)
+        input_positioned = self.positional_embedding(input_embedded)
 
-        output_embedded = self.input_embedding(output_sequence)
-        output_positioned = self.output_positional_embedding(output_embedded)
+        output_embedded = self.embedding(output_sequence) * math.sqrt(self.hidden_dim)
+        output_positioned = self.positional_embedding(output_embedded)
+
+        input_pad_mask = input_sequence == self.padding_idx
+        output_pad_mask = output_sequence == self.padding_idx
+
+        mask = nn.Transformer.generate_square_subsequent_mask(output_sequence.size(1)).to(self.device)
 
         output_decoded = self.transformer(
             input_positioned,
             output_positioned,
-            tgt_mask=mask
+            tgt_mask=mask,
+            src_key_padding_mask=input_pad_mask,
+            tgt_key_padding_mask=output_pad_mask
         )
 
-        out = output_decoded @ self.output_embedding.weight.T
+        out = self.linear(output_decoded)
+
+        # out = output_decoded @ self.output_embedding.weight.T
 
         return out
 
-    def step(self, input_sequence, output_sequence):
+    def step(self, input_sequence, output_sequence, debug=False):
         input = input_sequence[:, :-1]
         output = output_sequence[:, :-1]
         target = output_sequence[:, 1:].contiguous().view(-1)
-        mask = generate_square_subsequent_mask(input.size(1)).to(self.device)
+        # mask = generate_square_subsequent_mask(input.size(1)).to(self.device)
+        mask = nn.Transformer.generate_square_subsequent_mask(input.size(1)).to(self.device)
 
+        # print(input[0])
+        # print(output[0])
+        # print(mask[0])
         generated_sequences = self.forward(input, output, mask)
+        # print(generated_sequences[0])
         generated_sequences = generated_sequences.view(-1, self.vocab_size)
+        # print(generated_sequences[0])
 
-        # print(generated_sequences)
-        # print(target)
+        # if(debug):
+        # print(generated_sequences.shape)
+        # print(target.shape)
 
         # raise Exception()
 
+        # loss = F.cross_entropy(generated_sequences, target, ignore_index=self.padding_idx)
         loss = F.cross_entropy(generated_sequences, target, ignore_index=self.padding_idx)
+        # print(loss)
+        # raise Exception()
 
         return {"loss": loss, 
                 "perplexity": torch.exp(loss)}
@@ -107,24 +131,35 @@ class DoggyT5Simple(nn.Module):
             batch_size = num_sequences
 
         for idx in range(0, num_sequences, batch_size):
-            if self.start_idx == 0:
-                input_sequences = torch.LongTensor([self.start_idx] * batch_size).unsqueeze(
-                    dim=1
-                )
-            else:
-                input_sequences = inputs[:,0].unsqueeze(
-                    dim=1
-                )
+            # if self.start_idx == 0:
+            #     input_sequences = torch.LongTensor([self.start_idx] * batch_size).unsqueeze(
+            #         dim=1
+            #     )
+            # else:
+            input_sequences = inputs[:,0].unsqueeze(
+                dim=1
+            )
             input_sequences = input_sequences.to(self.device)
 
             inputs = inputs.to(self.device)
 
+            # print(inputs[0])
+
             for i in range(self.input_length):
+                # print(input_sequences[0])
                 out = self.forward(inputs, input_sequences)
+                # print(out[0])
                 out = out[:, -1, :] / temperature
+                # print(out[0])
                 out = F.softmax(out, dim=-1)
+                # print(out[0])
 
                 out = torch.topk(out, topk)
+                # print(out[0])
+
+                # if i == 10:
+                #     raise Exception()
+
 
                 new_input_sequences_i = torch.multinomial(out.values, num_samples=1)
                 new_input_sequences = out.indices[0, new_input_sequences_i]
