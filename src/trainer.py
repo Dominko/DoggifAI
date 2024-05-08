@@ -354,6 +354,10 @@ class Trainer:
                         target = reconstruct_pt_sequence(cdrs[i], targets[i])
                         sample = reconstruct_pt_sequence(cdrs[i], samples[i])
 
+                    if i == 1 or i == 2:
+                        print(target)
+                        print(sample)
+
                     if len(sample) == 0:
                         total_loss["empty_sequences"] +=1
                         continue

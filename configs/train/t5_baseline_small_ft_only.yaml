@@ -31,7 +31,7 @@ model_configs:
 training_configs:
   epochs: 300
   eval_steps: 1
-  checkpoint_steps: 100
+  checkpoint_steps: 10
   device: 0
   random_seed: 1234
   outputs_dir: "ft_train_outputs"

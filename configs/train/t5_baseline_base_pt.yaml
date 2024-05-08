@@ -20,7 +20,7 @@ model_configs:
     ff_size: 2048
     regularizers: []
     dropout: 0.1
-    batch_size: 256
+    batch_size: 128
     optimizer: "adam"
     learning_rate: 1e-4
     grad_accumulation_step: 1
