@@ -18,8 +18,6 @@ from transformers import BatchEncoding
 
 from .utils.common_utils import reconstruct_pt_sequence, reconstruct_ft_sequence
 
-import torch_optimizer
-
 from Bio import Align
 from Bio.Align import substitution_matrices
 from Bio.SeqUtils import ProtParam
@@ -83,9 +81,10 @@ class Trainer:
         self.device = device
 
         self.tokenizer = tokenizer
+        self.vocab_size = len(self.tokenizer)
         self.target_length = target_length
 
-        self.model = self.setup_model(configs.model_configs)
+        self.model = self.setup_model(configs.model_configs, self.tokenizer)
 
         self.optimizer = self.setup_optimizer(
             configs.model_configs.hyperparameters.optimizer
@@ -97,7 +96,7 @@ class Trainer:
         if configs.model_configs.model_state_dict_path:
             self.load_checkpoint(configs.model_configs.model_state_dict_path)
 
-    def setup_model(self, model_configs: ModelConfigs) -> nn.Module:
+    def setup_model(self, model_configs: ModelConfigs, tokenizer) -> nn.Module:
         """
         Setup model based on the model type, number of entities and relations
         mentioned in the config file
@@ -115,7 +114,7 @@ class Trainer:
                 {"start_idx": self.start_idx,
                  "end_idx": self.tokenizer.eos_token_id,
                  "padding_idx": self.tokenizer.pad_token_id,
-                 "vocab_size": self.tokenizer.vocab_size,
+                 "vocab_size": self.vocab_size,
                  "target_length": self.target_length}
             )
 
@@ -125,7 +124,7 @@ class Trainer:
             )
 
         return MODELS_MAP[model_configs.model_type](
-            model_configs, self.device, **kwargs
+            model_configs, tokenizer, self.device, **kwargs
         ).to(self.device)
 
     def setup_optimizer(self, optimizer: str) -> torch.optim.Optimizer:
@@ -234,7 +233,7 @@ class Trainer:
                             }
 
         total_examples = 0
-        valid_length = 9
+        valid_length = 0
         # TEST
         loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
 

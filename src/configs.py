@@ -5,13 +5,14 @@ from pydantic import BaseModel
 
 class DataSplitConfigs(BaseModel):
     input_sequences_path: Optional[str]
-    output_sequences_path: str
+    output_sequences_path: Optional[str]
 
 
 class DatasetConfigs(BaseModel):
-    train: DataSplitConfigs
-    val: DataSplitConfigs
-    test: DataSplitConfigs
+    train: Optional[DataSplitConfigs]
+    val: Optional[DataSplitConfigs]
+    test: Optional[DataSplitConfigs]
+    sample: Optional[DataSplitConfigs]
     corrupted_percentage: Optional[float] = 0.15
     mean_noise_span_length: Optional[float] = 3.0
     extra_ids: Optional[int] = 100
@@ -70,5 +71,8 @@ class TestingConfigs(BaseModel):
     device: Optional[int] = 0
     pretrained_model_state_dict_path: str
     pretrained_model_configs_path: str
-    topk=5
-    input_path: str
+    top_k: Optional[int] = 5
+    beam_width: Optional[int] = 5
+    sample_method="topk"
+    sample_conf: DatasetConfigs
+    run_validation: bool = True

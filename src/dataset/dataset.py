@@ -42,6 +42,9 @@ class SequenceDataset:
         elif split == "test":
             input_sequences_path = dataset_configs.test.input_sequences_path
             output_sequences_path = dataset_configs.test.output_sequences_path
+        elif split == "sample":
+            input_sequences_path = dataset_configs.sample.input_sequences_path
+            output_sequences_path = dataset_configs.sample.output_sequences_path
 
         self.input_sequences = datasets.load_dataset("csv", data_files=input_sequences_path)["train"]
         self.output_sequences = datasets.load_dataset("csv", data_files=output_sequences_path)["train"]
@@ -57,8 +60,7 @@ class SequenceDataset:
                     'prepend_start_token': False,
                     'max_seq_len': self.max_seq_len,
                 },
-                remove_columns=['text'],
-                load_from_cache_file=False
+                remove_columns=['text']
             )
         
         self.output_sequences = self.output_sequences.map(
@@ -69,8 +71,7 @@ class SequenceDataset:
                     'prepend_start_token': self.prepend_start_token,
                     'max_seq_len': self.max_seq_len,
                 },
-                remove_columns=['text'],
-                load_from_cache_file=False
+                remove_columns=['text']
             )
         
         self.sequences = self.sequences.add_column("output_ids", self.output_sequences["input_ids"])

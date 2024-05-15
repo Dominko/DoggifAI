@@ -4,17 +4,23 @@ from torch import nn
 from torch.nn import TransformerDecoder, TransformerEncoder
 from torch.nn import functional as F
 from tqdm import tqdm
+from transformers import PreTrainedTokenizer
 
 from src.configs import ModelConfigs
 from src.constants import AA_DICT
 from src.utils.model_utils import generate_square_subsequent_mask
+
+# import torchaudio
+# from torchaudio.models.decoder import ctc_decoder
+
+from src.models.decoders.beam_search import beam_search
 
 import math
 
 import numpy as np
 
 class DoggyT5Simple(nn.Module):
-    def __init__(self, model_configs: ModelConfigs, device=None, **kwargs):
+    def __init__(self, model_configs: ModelConfigs, tokenizer: PreTrainedTokenizer, device=None, **kwargs):
         super().__init__()
         self.input_length = model_configs.hyperparameters.max_seq_len
         self.output_length = kwargs["target_length"]
@@ -26,6 +32,9 @@ class DoggyT5Simple(nn.Module):
         self.dropout = model_configs.hyperparameters.dropout
         self.ff_size = model_configs.hyperparameters.ff_size
 
+        self.tokenizer = tokenizer
+
+        # self.vocab_size = kwargs["vocab_size"] - 1
         self.vocab_size = kwargs["vocab_size"]
 
         self.padding_idx = kwargs["padding_idx"]
@@ -37,7 +46,8 @@ class DoggyT5Simple(nn.Module):
         self._build_model()
 
     def _build_model(self):
-        self.embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
+        self.embedding = nn.Embedding(self.vocab_size, self.hidden_dim, padding_idx = self.padding_idx)
+        # self.embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
 
         # self.output_embedding = nn.Embedding(self.vocab_size, self.hidden_dim)
 
@@ -63,7 +73,8 @@ class DoggyT5Simple(nn.Module):
 
     def forward(self, input_sequence, output_sequence, mask=None):
 
-        input_embedded = self.embedding(input_sequence) * math.sqrt(self.hidden_dim)
+        input_embedded = self.embedding(input_sequence) 
+        input_embedded =  math.sqrt(self.hidden_dim) * input_embedded
         input_positioned = self.positional_embedding(input_embedded)
 
         output_embedded = self.embedding(output_sequence) * math.sqrt(self.hidden_dim)
@@ -118,9 +129,44 @@ class DoggyT5Simple(nn.Module):
                 "perplexity": torch.exp(loss)}
 
     def generate_sequences(
-        self, num_sequences, inputs, temperature=1.0, batch_size=None, topk=5, trim_to_eos=True
+        self, num_sequences_per_input, inputs, temperature=1.0, batch_size=None, topk=1, beam_width=5, trim_to_eos=True, sample_method="topk"
     ):
         self.eval()
+        if sample_method == "topk":
+            return self.topk_generator(num_sequences_per_input, 
+                                       inputs, 
+                                       temperature = temperature, 
+                                       batch_size = batch_size, 
+                                       topk = topk, 
+                                       trim_to_eos = trim_to_eos
+                                       )
+        elif sample_method == "beam":
+            return self.beam_generator(num_sequences_per_input, 
+                                       inputs, 
+                                       temperature = temperature, 
+                                       batch_size = batch_size, 
+                                       beam_width = beam_width, 
+                                       trim_to_eos = trim_to_eos
+                                       )
+        else:
+            raise NotImplementedError()
+    
+    def beam_generator(
+            self, num_sequences_per_input, inputs, temperature=1.0, batch_size=None, beam_width=1, trim_to_eos=True
+    ):
+        input_sequences = inputs[:,0].unsqueeze(
+                dim=1
+            ).to(self.device)
+        inputs = inputs.to(self.device)
+        out, probabilities = beam_search(self, inputs, Y_init = input_sequences, predictions=self.input_length, beam_width=beam_width)
+        out = out[:, :num_sequences_per_input]
+        out = out.reshape(-1, out.shape[-1]) # flatten first two axes
+        return out
+
+    def topk_generator(
+            self, num_sequences_per_input, inputs, temperature=1.0, batch_size=None, topk=1, trim_to_eos=True
+    ):
+        num_sequences = num_sequences_per_input * len(inputs)
         # padding is all ones
         samples = torch.ones(num_sequences, self.input_length).to(self.device)
 
@@ -131,11 +177,6 @@ class DoggyT5Simple(nn.Module):
             batch_size = num_sequences
 
         for idx in range(0, num_sequences, batch_size):
-            # if self.start_idx == 0:
-            #     input_sequences = torch.LongTensor([self.start_idx] * batch_size).unsqueeze(
-            #         dim=1
-            #     )
-            # else:
             input_sequences = inputs[:,0].unsqueeze(
                 dim=1
             )
@@ -143,27 +184,15 @@ class DoggyT5Simple(nn.Module):
 
             inputs = inputs.to(self.device)
 
-            # print(inputs[0])
-
             for i in range(self.input_length):
-                # print(input_sequences[0])
                 out = self.forward(inputs, input_sequences)
-                # print(out[0])
                 out = out[:, -1, :] / temperature
-                # print(out[0])
                 out = F.softmax(out, dim=-1)
-                # print(out[0])
 
                 out = torch.topk(out, topk)
-                # print(out[0])
-
-                # if i == 10:
-                #     raise Exception()
-
 
                 new_input_sequences_i = torch.multinomial(out.values, num_samples=1)
                 new_input_sequences = out.indices[0, new_input_sequences_i]
-
                 samples[idx : idx + batch_size, i] = new_input_sequences.squeeze()
                 input_sequences = torch.cat(
                     (input_sequences, new_input_sequences), dim=1

@@ -43,6 +43,8 @@ class SequenceDatasetS2S:
             output_sequences_path = dataset_configs.val.output_sequences_path
         elif split == "test":
             output_sequences_path = dataset_configs.test.output_sequences_path
+        elif split == "sample":
+            output_sequences_path = dataset_configs.test.output_sequences_path
 
         # self.sequences = load_sequences_file(output_sequences_path)
         self.sequences = datasets.load_dataset("csv", data_files=output_sequences_path)["train"]
