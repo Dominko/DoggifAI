@@ -1,0 +1,13 @@
+device: 0
+random_seed: 1234
+outputs_dir: "sample_outputs"
+pretrained_model_state_dict_path: train_outputs/2024_05_16__14_24_59/checkpoint_22.pt
+pretrained_model_configs_path: train_outputs/2024_05_16__14_24_59/configs.yaml
+input_path: ./datasets/doggy_data/sample_gen
+top_k: 1
+beam_width: 131
+sample_method: "topk"
+sample_conf:
+  sample:
+    output_sequences_path: ./datasets/doggy_data/train_pt_super_small
+run_validation: True

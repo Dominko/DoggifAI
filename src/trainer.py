@@ -332,20 +332,23 @@ class Trainer:
 
             if (data_split == "val" or data_split == "train") and iteration < 100:
                 self.model.eval()
-                samples = self.model.generate_sequences(len(batch_input_sequences), 
+                samples = self.model.generate_sequences(1, 
                                                         batch_input_sequences, 
                                                         temperature=1.0, 
-                                                        topk=self.configs.validation_configs.top_k)
+                                                        batch_size=len(batch_input_sequences),
+                                                        sample_method = self.configs.validation_configs.sample_method,
+                                                        topk=self.configs.validation_configs.top_k,
+                                                        beam_width=self.configs.validation_configs.beam_width)
                 if data_split == "train":
                     self.model.train()
                 else:
-                    self.model.eval()
+                    self.model.eval() 
                 samples = self.tokenizer.batch_decode(samples)
                 targets = self.tokenizer.batch_decode(batch_output_sequences)
                 cdrs = self.tokenizer.batch_decode(batch_input_sequences)
 
                 # Compute local alignment scores
-                for i in range(len(batch_input_sequences)):                    
+                for i in range(len(batch_input_sequences)):      
                     if self.configs.training_configs.training_type == "ft":
                         target = reconstruct_ft_sequence(targets[i], cdrs[i])
                         sample = reconstruct_ft_sequence(samples[i], cdrs[i])

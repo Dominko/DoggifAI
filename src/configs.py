@@ -57,7 +57,9 @@ class ValidationConfigs(BaseModel):
     substitution_matrix: str = "PAM30"
     gap_insertion_penalty: int = -11
     gap_extension_penalty: int = -1
-    top_k: int = 5
+    sample_method="topk"
+    top_k: Optional[int] = 1
+    beam_width: Optional[int] = 5
 
 class TrainingConfigs(BaseModel):
     dataset_configs: DatasetConfigs

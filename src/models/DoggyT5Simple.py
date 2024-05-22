@@ -38,6 +38,7 @@ class DoggyT5Simple(nn.Module):
         self.vocab_size = kwargs["vocab_size"]
 
         self.padding_idx = kwargs["padding_idx"]
+        print(self.padding_idx)
         self.start_idx = kwargs["start_idx"]
         self.end_idx = kwargs["end_idx"]
 

@@ -264,6 +264,9 @@ class Sampler:
                                                     topk=self.configs.top_k,
                                                     beam_width=self.configs.beam_width)
             
+            # print(self.tokenizer.eos_token_id)
+            # print(samples[0])
+            # raise Exception()
 
             samples = self.tokenizer.batch_decode(samples)
             cdrs = self.tokenizer.batch_decode(batch_input_sequences)

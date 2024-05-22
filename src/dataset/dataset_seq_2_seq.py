@@ -44,7 +44,7 @@ class SequenceDatasetS2S:
         elif split == "test":
             output_sequences_path = dataset_configs.test.output_sequences_path
         elif split == "sample":
-            output_sequences_path = dataset_configs.test.output_sequences_path
+            output_sequences_path = dataset_configs.sample.output_sequences_path
 
         # self.sequences = load_sequences_file(output_sequences_path)
         self.sequences = datasets.load_dataset("csv", data_files=output_sequences_path)["train"]
@@ -62,8 +62,7 @@ class SequenceDatasetS2S:
                     'tokenizer': self.tokenizer,
                     'prepend_start_token': self.prepend_start_token,
                 },
-                remove_columns=['text'],
-                load_from_cache_file=False
+                remove_columns=['text']
             )
         
         # print(self.sequences[0]["input_ids"])
@@ -90,6 +89,7 @@ class SequenceDatasetS2S:
             input_length=self.max_seq_len,
             target_length=self.max_seq_len,
             pad_token_id=self.tokenizer.pad_token_id,
+            max_sentinel_token_idx = self.tokenizer.additional_special_tokens_ids[0],
             decoder_start_token_id=self.tokenizer.bos_token_id,
         )
 

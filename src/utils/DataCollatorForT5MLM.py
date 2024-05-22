@@ -91,6 +91,9 @@ class DataCollatorForT5MLM:
             The expected target length after masking.
         pad_token_id: (:obj:`int`):
             The pad token id of the model
+        max_sentinel_token_idx: int:
+            The index of the largest sentinel ID in the tokenizer, e.g. if sentinel token IDs were between 31 and 130, 
+            the max_sentinel_token_idx would be 130
         decoder_start_token_id: (:obj:`int):
             The decoder start token id of the model
     """
@@ -101,6 +104,7 @@ class DataCollatorForT5MLM:
     input_length: int
     target_length: int
     pad_token_id: int
+    max_sentinel_token_idx: int 
     decoder_start_token_id: int
 
     def __call__(self, examples: List[Dict[str, np.ndarray]]) -> Dict[str, np.ndarray]:
@@ -126,8 +130,8 @@ class DataCollatorForT5MLM:
             examples[i]["input_ids"] = np.pad(examples[i]["input_ids"], pad_width=(0, padding_len), mode="constant", constant_values=self.pad_token_id)
 
             # print("\r\n" + str(len(mask_indices[0])) + "\r\n")
-            # print(str(len(examples[i]["input_ids"])))
-        
+            # 
+
         mask_indices = np.asarray(mask_indices)
         unpadded_mask = np.asarray(unpadded_mask)
 
@@ -152,6 +156,7 @@ class DataCollatorForT5MLM:
 
         batch["input_ids"] = self.filter_input_ids(input_ids, input_ids_sentinel, self.input_length, prepend_bos=False)
         batch["labels"] = self.filter_input_ids(input_ids, labels_sentinel, self.target_length, prepend_bos=True)
+
 
         # print("\r\n" + self.tokenizer.decode(batch["labels"][0]) + "\r\n")
 
@@ -184,7 +189,7 @@ class DataCollatorForT5MLM:
         start_indices[:, 0] = mask_indices[:, 0]
 
         sentinel_ids = np.where(start_indices != 0, np.cumsum(start_indices, axis=-1), start_indices)
-        sentinel_ids = np.where(sentinel_ids != 0, (len(self.tokenizer) - sentinel_ids), 0)
+        sentinel_ids = np.where(sentinel_ids != 0, (self.max_sentinel_token_idx + 1 - sentinel_ids), 0) # Offset by 1 since we subtract 1 on the first ID
         sentinel_ids -= mask_indices - start_indices
 
         return sentinel_ids
@@ -201,7 +206,7 @@ class DataCollatorForT5MLM:
         start_indices[:, 0] = mask_indices[:, 0]
 
         sentinel_ids = np.where(start_indices != 0, np.cumsum(start_indices, axis=-1), start_indices)
-        sentinel_ids = np.where(sentinel_ids != 0, (len(self.tokenizer) - sentinel_ids), 0)
+        sentinel_ids = np.where(sentinel_ids != 0, (self.max_sentinel_token_idx + 1 - sentinel_ids), 0)
         sentinel_ids -= mask_indices - start_indices
 
         return sentinel_ids
@@ -223,7 +228,7 @@ class DataCollatorForT5MLM:
         input_ids = []
         for input_id in input_ids_full:
             padding_len = len(input_id[input_id<0])
-            input_id = np.pad(input_id[input_id >= 0], pad_width=(self.tokenizer.pad_token_id, padding_len), mode="constant", constant_values=False)
+            input_id = np.pad(input_id[input_id >= 0], pad_width=(0, padding_len), mode="constant", constant_values=self.tokenizer.pad_token_id)
             # input_id[np.argwhere(input_id==self.tokenizer.pad_token_id)[0]] = self.tokenizer.eos_token_id
             input_ids.append(input_id[:out_length])
 
