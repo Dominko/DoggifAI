@@ -23,7 +23,7 @@ source ~/.bashrc
 #mkdir -p ${SCRATCH_HOME}
 
 # Activate your conda environment
-CONDA_ENV_NAME=rnaformer
+CONDA_ENV_NAME=spike_rna
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
 conda activate ${CONDA_ENV_NAME}
 

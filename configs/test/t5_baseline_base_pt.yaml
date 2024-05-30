@@ -1,8 +1,8 @@
 device: 0
 random_seed: 1234
 outputs_dir: "sample_outputs"
-pretrained_model_state_dict_path: train_outputs/2024_05_16__14_24_59/checkpoint_22.pt
-pretrained_model_configs_path: train_outputs/2024_05_16__14_24_59/configs.yaml
+pretrained_model_state_dict_path: train_outputs/base_pt/checkpoint_40.pt
+pretrained_model_configs_path: train_outputs/base_pt/configs.yaml
 input_path: ./datasets/doggy_data/sample_gen
 top_k: 1
 beam_width: 131
