@@ -209,7 +209,8 @@ class Trainer:
                             "perplexity": 0,
                             "avg_alignment_score": 0,
                             "avg_alignment_loss": 0,
-                            "avg_alignment_identity": 0,
+                            "avg_alignment_identity_mismatch": 0,
+                            "avg_alignment_log_probability":0,
                             "avg_charge_at_pH7": 0,
                             "avg_gravy": 0,
                             "avg_instability_index": 0,
@@ -226,7 +227,8 @@ class Trainer:
                             "perplexity": 0,
                             "avg_alignment_score": 0,
                             "avg_alignment_loss": 0,
-                            "avg_alignment_identity": 0,
+                            "avg_alignment_identity_mismatch": 0,
+                            "avg_alignment_log_probability":0,
                             "avg_charge_at_pH7": 0,
                             "avg_gravy": 0,
                             "avg_instability_index": 0,
@@ -344,7 +346,8 @@ class Trainer:
                 # total_loss["perplexity"] += perplexity.item() * num_examples
             total_examples += num_examples
 
-            if (data_split == "val" or data_split == "train") and iteration < 100 and epoch >= 500:
+            # if (data_split == "val" or data_split == "train") and iteration < 100 and epoch >= 500:
+            if (data_split == "val" or data_split == "train") and iteration < 100:
                 self.model.eval()
                 # If we do PT, use chain indicator as first token
                 if self.configs.training_configs.training_type == "ft":
@@ -430,7 +433,8 @@ class Trainer:
 
                     total_loss["avg_alignment_score"] += alignment_score
                     total_loss["avg_alignment_loss"] += (alignment_target - alignment_score)
-                    total_loss["avg_alignment_identity"] += (identity_alignment_target - identity_alignment_score)
+                    total_loss["avg_alignment_identity_mismatch"] += (identity_alignment_target - identity_alignment_score)
+                    total_loss["avg_alignment_log_probability"] += probabilities.sum()
                     total_loss["avg_charge_at_pH7"] += charge_at_pH7
                     total_loss["avg_gravy"] += gravy
                     total_loss["avg_instability_index"] += instability_index
@@ -458,7 +462,8 @@ class Trainer:
         if (valid_length != 0):
             total_loss["avg_alignment_score"] /= valid_length
             total_loss["avg_alignment_loss"] /= valid_length
-            total_loss["avg_alignment_identity"] /= valid_length
+            total_loss["avg_alignment_identity_mismatch"] /= valid_length
+            total_loss["avg_alignment_log_probability"] /= valid_length
             total_loss["avg_charge_at_pH7"] /= valid_length
             total_loss["avg_gravy"] /= valid_length
             total_loss["avg_instability_index"] /= valid_length
