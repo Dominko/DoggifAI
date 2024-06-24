@@ -4,6 +4,8 @@ import torch
 import torch.utils.data as tud
 from tqdm.auto import tqdm
 import warnings
+from torch.nn import functional as F
+import random
 
 def beam_search(
     model, 
@@ -12,7 +14,8 @@ def beam_search(
     predictions = 20,
     beam_width = 5,
     batch_size = 50, 
-    progress_bar = 0
+    progress_bar = 0,
+    temperature=1.0
 ):
     """
     Implements Beam Search to compute the output with the sequences given in X. The method can compute 
@@ -48,19 +51,38 @@ def beam_search(
         if Y_init == None:
             Y = torch.ones(X.shape[0], 1).to(next(model.parameters()).device).long()
         else:
-            Y = Y_init.to(next(model.parameters()).device).long()
+            Y = Y_init
+
+        # print(X)
+        # print(Y)
+
         # The next command can be a memory bottleneck, can be controlled with the batch 
         # size of the predict method.
-        next_probabilities = model.forward(X, Y)[:, -1, :]
+        next_probabilities = model.forward(X, Y)
         vocabulary_size = next_probabilities.shape[-1]
+        
+        ### LOG LIKELIHOOD 
         probabilities, next_chars = next_probabilities.squeeze().log_softmax(-1)\
         .topk(k = beam_width, axis = -1)
-        Y = Y.repeat((beam_width, 1))
+        ##################
+
+        ### LIKELIHOOD
+        # next_probabilities = next_probabilities[:, -1, :] / temperature
+        # next_probabilities = F.softmax(next_probabilities, dim=-1)
+        # probabilities, next_chars = next_probabilities.topk(k = beam_width, axis = -1)
+        ##################
+
+        # Y = Y.repeat((beam_width, 1))
+        Y = Y.repeat((beam_width, 1, 1)).transpose(0, 1).flatten(end_dim = 1)
         next_chars = next_chars.reshape(-1, 1)
+        # next_chars = next_chars.t().flatten().view(-1,1)
         Y = torch.cat((Y, next_chars), axis = -1)
         # This has to be minus one because we already produced a round
         # of predictions before the for loop.
         predictions_iterator = range(predictions - 1)
+
+        # print(Y)
+        
         if progress_bar > 0:
             predictions_iterator = tqdm(predictions_iterator)
         for i in predictions_iterator:
@@ -71,15 +93,33 @@ def beam_search(
             if progress_bar > 1:
                 iterator = tqdm(iterator)
             for x, y in iterator:
+                ### LOG LIKELIHOOD
                 next_probabilities.append(model.forward(x, y)[:, -1, :].log_softmax(-1))
+                ##################
+
+                ### LIKELIHOOD
+                # out = model.forward(x, y)
+                # out = out[:, -1, :] / 1
+                # out = F.softmax(out, dim=-1)
+
+                # next_probabilities.append(out)
+                ##################
+            
             next_probabilities = torch.cat(next_probabilities, axis = 0)
             next_probabilities = next_probabilities.reshape((-1, beam_width, next_probabilities.shape[-1]))
+
+            # probabilities = next_probabilities
             probabilities = probabilities.unsqueeze(-1) + next_probabilities
+            # probabilities = probabilities.unsqueeze(-1) * next_probabilities
             probabilities = probabilities.flatten(start_dim = 1)
+            
             probabilities, idx = probabilities.topk(k = beam_width, axis = -1)
+
             next_chars = torch.remainder(idx, vocabulary_size).flatten().unsqueeze(-1)
             best_candidates = (idx / vocabulary_size).long()
             best_candidates += torch.arange(Y.shape[0] // beam_width, device = X.device).unsqueeze(-1) * beam_width
+
             Y = Y[best_candidates].flatten(end_dim = -2)
             Y = torch.cat((Y, next_chars), axis = 1)
+        
         return Y.reshape(-1, beam_width, Y.shape[-1]), probabilities

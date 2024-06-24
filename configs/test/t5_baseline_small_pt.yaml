@@ -11,3 +11,4 @@ sample_conf:
   sample:
     output_sequences_path: ./datasets/doggy_data/train_pt_super_small
 run_validation: True
+verbose: True

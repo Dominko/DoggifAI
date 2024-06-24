@@ -52,6 +52,9 @@ class SetupConfigs(BaseModel):
     training_type: str = "pt"
     wandb_project: str = "doggy_ai"
     wandb_name: str = "doggy_ai"
+    verbose: bool = False
+    verbose_output_file: Optional[str] = "debug_output"
+    samples_output_file: Optional[str] = "samples_output"
 
 class ValidationConfigs(BaseModel):
     substitution_matrix: str = "PAM30"
@@ -78,3 +81,4 @@ class TestingConfigs(BaseModel):
     sample_method="topk"
     sample_conf: DatasetConfigs
     run_validation: bool = True
+    verbose: bool = False

@@ -169,7 +169,6 @@ def reconstruct_ft_sequence(sequence, cdrs ):
     return sequence
 
 extra_id_template = "<extra_id_?>"
-extra_id_len = len(extra_id_template)
 
 def reconstruct_pt_sequence(sequence, generated ):
     sequence = sequence.replace(" ", "")
@@ -192,12 +191,16 @@ def reconstruct_pt_sequence(sequence, generated ):
         if start_idx == -1:
             i += 1
             continue
-        generated = generated[start_idx+extra_id_len:]
+        generated = generated[start_idx+len(extra_id):]
         end_idx = generated.find("<")
         if start_idx == -1:
             end_idx = len(generated)-1
 
         chunk = generated[:end_idx]
+        # print(chunk)
         reconstructed = reconstructed.replace(extra_id, chunk)
+
+        # print(generated)
+        # print(reconstructed)
 
         i += 1

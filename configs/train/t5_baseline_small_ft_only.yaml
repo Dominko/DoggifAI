@@ -29,7 +29,7 @@ model_configs:
     grad_accumulation_step: 1
     immunogenicity_as_value: False
 training_configs:
-  epochs: 300
+  epochs: 500
   eval_steps: 1
   checkpoint_steps: 10
   device: 0
@@ -38,6 +38,9 @@ training_configs:
   training_type: "ft"
   wandb_project: "doggy_ai_ft"
   wandb_name: "doggy_ai_ft_small_no_pt"
+  verbose: True
+  verbose_output_file: "debug_outputs"
+  samples_output_file: "samples_output"
 validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11

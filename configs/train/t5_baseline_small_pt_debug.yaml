@@ -26,17 +26,22 @@ model_configs:
     grad_accumulation_step: 1
     immunogenicity_as_value: False
 training_configs:
-  epochs: 300
+  epochs: 500
   eval_steps: 1
-  checkpoint_steps: 100
+  checkpoint_steps: 500
   device: 0
   random_seed: 1234
   outputs_dir: "train_outputs"
   training_type: "pt"
   wandb_project: "doggy_ai_pt"
   wandb_name: "doggy_ai_pt_small"
+  verbose: True
+  verbose_output_file: "debug_outputs"
+  samples_output_file: "samples_output"
 validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11
   gap_extension_penalty: -1
-  top_k: 1
+  sample_method: "topk"
+  beam_width: 15
+  top_k: 3

@@ -287,10 +287,11 @@ class Sampler:
                         output_file.write("\r\ninput: " + cdrs[i] + "\r\n")
 
                 for j in range(self.sequences_per_input):          
+                    generated = samples[i*self.sequences_per_input+j]
                     if self.train_configs.training_configs.training_type == "ft":
-                        sample = reconstruct_ft_sequence(samples[i*self.sequences_per_input+j], cdrs[i])
+                        sample = reconstruct_ft_sequence(generated, cdrs[i])
                     else:
-                        sample = reconstruct_pt_sequence(cdrs[i], samples[i*self.sequences_per_input+j])
+                        sample = reconstruct_pt_sequence(cdrs[i], generated)
 
                     if self.validate:
                         if len(sample) == 0:
@@ -334,6 +335,8 @@ class Sampler:
                         total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight)
 
                     with open(self.full_filename, "a") as output_file:
+                        if (self.configs.verbose):
+                            output_file.write(generated + "\r\n")
                         output_file.write(sample + "\r\n")
 
         if self.validate:
