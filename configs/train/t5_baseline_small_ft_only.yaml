@@ -45,4 +45,6 @@ validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11
   gap_extension_penalty: -1
+  sample_method: "topk"
+  beam_width: 1
   top_k: 1
