@@ -34,6 +34,8 @@ echo "Setting up Wandb API key"
 key=`cat scripts/wandb_key`
 export WANDB_API_KEY=$key
 
+echo "setting huggingface cache dir"
+export HF_DATASETS_CACHE="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/.cache"
 
 echo "Running experiment"
 echo "Config: $1"
