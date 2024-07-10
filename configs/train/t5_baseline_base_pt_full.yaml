@@ -34,7 +34,7 @@ training_configs:
   outputs_dir: "train_outputs"
   training_type: "pt"
   wandb_project: "doggy_ai_pt"
-  wandb_name: "doggy_ai_pt_base"
+  wandb_name: "doggy_ai_pt_base_full"
 validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11
