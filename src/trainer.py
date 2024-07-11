@@ -365,7 +365,7 @@ class Trainer:
                                                         sample_method = self.configs.validation_configs.sample_method,
                                                         topk=self.configs.validation_configs.top_k,
                                                         beam_width=self.configs.validation_configs.beam_width)
-                print(samples)
+                # print(samples)
                 if data_split == "train":
                     self.model.train()
                 else:
