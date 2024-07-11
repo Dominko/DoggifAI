@@ -27,4 +27,4 @@ echo "Paths to FASTA files, each containing a prediction target
 
 echo "Output directory: $2"
 
-alphafold --fasta_paths $1 --output_dir $2
+alphafold --fasta_paths $1 --output_dir $2 --max_template_date=2022-01-01
