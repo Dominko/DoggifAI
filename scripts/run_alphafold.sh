@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --qos epsrc
-#SBATCH --time 9-23:59:59
+#SBATCH --time 1:59:59
 #SBATCH --nodes 1
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-gpu 4
-#SBATCH --gpus-per-task 4
+#SBATCH --gpus-per-task 1
 
 echo "Job running on ${SLURM_JOB_NODELIST}"
 
