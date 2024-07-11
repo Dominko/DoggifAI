@@ -5,6 +5,7 @@
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-gpu 4
 #SBATCH --gpus-per-task 1
+#SBATCH --mem-per-gpu 64G
 
 echo "Job running on ${SLURM_JOB_NODELIST}"
 
