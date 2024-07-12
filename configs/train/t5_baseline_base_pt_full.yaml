@@ -28,7 +28,7 @@ model_configs:
 training_configs:
   epochs: 100
   eval_steps: 1
-  checkpoint_steps: 10
+  checkpoint_steps: 1
   device: 0
   random_seed: 1234
   outputs_dir: "train_outputs"
