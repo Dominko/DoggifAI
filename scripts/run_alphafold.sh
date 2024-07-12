@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --qos epsrc
-#SBATCH --time 1:59:59
+#SBATCH --time 3:59:59
 #SBATCH --nodes 1
 #SBATCH --tasks-per-node 1
 #SBATCH --cpus-per-gpu 4
