@@ -17,7 +17,7 @@ model_configs:
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
-    max_seq_len: 150
+    max_seq_len: 188
     hidden_dim: 1024
     nhead: 16
     num_layers: 8
@@ -38,7 +38,7 @@ training_configs:
   outputs_dir: "ft_train_outputs"
   training_type: "ft"
   wandb_project: "doggy_ai_ft"
-  wandb_name: "doggy_ai_ft_large"
+  wandb_name: "doggy_ai_ft_large_full"
 validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11
