@@ -201,6 +201,8 @@ class Trainer:
             self.configs.model_configs.hyperparameters.batch_size,
             collate_fn=dataset.getCollator(),
             shuffle=True,
+            num_workers=8,
+            pin_memory=True
         )
         
         if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
