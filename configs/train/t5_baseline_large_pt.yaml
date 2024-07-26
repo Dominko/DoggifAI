@@ -22,7 +22,7 @@ model_configs:
     dropout: 0.1
     batch_size: 128
     optimizer: "adam"
-    learning_rate: 5e-4
+    learning_rate: 1e-5
     grad_accumulation_step: 1
     immunogenicity_as_value: False
 training_configs:
