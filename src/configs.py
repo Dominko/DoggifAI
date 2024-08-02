@@ -41,6 +41,8 @@ class ModelConfigs(BaseModel):
     extra_attribute: bool = False
     tokenizer:str = "Base"
     tokenizer_path:Optional[str]
+    start_epoch:Optional[int] = 1
+    model_id:Optional[str]
 
 class SetupConfigs(BaseModel):
     epochs: int = 20

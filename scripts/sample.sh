@@ -1,37 +1,42 @@
 #!/bin/bash
-# # SBATCH -o /home/%u/slogs/sl_%A.out
-# # SBATCH -e /home/%u/slogs/sl_%A.out
-#SBATCH -N 1	  # nodes requested
-#SBATCH -n 1	  # tasks requested
-#SBATCH --gres=gpu:1  # use 1 GPU
-#SBATCH --mem=14000  # memory in Mb
-#SBATCH --partition=ampere
-#SBATCH --account=BMAI-CDT-SL2-GPU
-#SBATCH -t 1-00:00:00  # time requested in hour:minute:seconds
-#SBATCH --cpus-per-gpu=4
+#SBATCH --qos epsrc
+#SBATCH --time 9-23:59:59
+#SBATCH --nodes 1
+#SBATCH --tasks-per-node 1
+#SBATCH --cpus-per-gpu 4
+#SBATCH --gpus-per-task 4
 
 echo "Job running on ${SLURM_JOB_NODELIST}"
 
 dt=$(date '+%d/%m/%Y %H:%M:%S')
 echo "Job started: $dt"
 
-echo "Setting up bash enviroment"
-source ~/.bashrc
-#set -e
-#SCRATCH_DISK=/disk/scratch
-#SCRATCH_HOME=${SCRATCH_DISK}/${USER}
-#mkdir -p ${SCRATCH_HOME}
+module purge
+module load baskerville
+module load Miniconda3/4.10.3
+eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
 
 # Activate your conda environment
 CONDA_ENV_NAME=spike_rna
+# CONDA_ENV_PATH="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/envs/${CONDA_ENV_NAME}"
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
 conda activate ${CONDA_ENV_NAME}
+
+echo "Setting up Wandb API key"
+key=`cat scripts/wandb_key`
+export WANDB_API_KEY=$key
+
+echo "setting huggingface cache dir"
+export HF_DATASETS_CACHE="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/.cache"
+
+echo "Running experiment"
+echo "Config: $1"
 
 echo "Running experiment"
 # limit of 12 GB GPU is hidden 256 and batch size 256
 python scripts/sample.py \
 --config_filepath $1 \
---num_sequences=33000
+--num_sequences=1
 
 echo ""
 echo "============"

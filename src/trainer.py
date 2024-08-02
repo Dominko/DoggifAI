@@ -93,8 +93,12 @@ class Trainer:
             configs.model_configs.hyperparameters.grad_accumulation_step
         )
 
+        self.start_epoch = 1
+
         if configs.model_configs.model_state_dict_path:
             self.load_checkpoint(configs.model_configs.model_state_dict_path)
+            self.start_epoch = configs.model_configs.start_epoch
+            
 
     def setup_model(self, model_configs: ModelConfigs, tokenizer) -> nn.Module:
         """
@@ -506,7 +510,7 @@ class Trainer:
         # }
 
     def train(self):
-        for epoch in range(1, 1 + self.configs.training_configs.epochs):
+        for epoch in range(self.start_epoch, 1 + self.configs.training_configs.epochs):
             # Run one epoch of training
             train_loss = self.epoch(epoch, "train")
 

@@ -50,6 +50,23 @@ def main():
         entity="dominik-grabarczyk",
         mode="online" if args.log_to_wandb else "disabled",
     )
+    if configs.model_configs.model_id == None:
+        wandb.init(
+            project=configs.training_configs.wandb_project,
+            name=configs.training_configs.wandb_name,
+            entity="dominik-grabarczyk",
+            mode="online" if args.log_to_wandb else "disabled",
+        )
+    else:
+        wandb.init(
+            project=configs.training_configs.wandb_project,
+            name=configs.training_configs.wandb_name,
+            entity="dominik-grabarczyk",
+            mode="online" if args.log_to_wandb else "disabled",
+            id=configs.model_configs.model_id, 
+            resume="must"
+        )
+    
     wandb.config.update(configs.dict())
     wandb.config.update(
         {"outputs_dir": outputs_dir, "device_count": torch.cuda.device_count()}

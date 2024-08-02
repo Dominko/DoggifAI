@@ -117,8 +117,8 @@ class Sampler:
         kwargs = {}
         if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
             kwargs.update(
-                {"start_idx": self.start_idx,
-                 "end_idx": self.tokenizer.eos_token_id,
+                {"bos_idx": self.tokenizer.bos_token_id,
+                 "eos_idx": self.tokenizer.eos_token_id,
                  "padding_idx": self.tokenizer.pad_token_id,
                  "vocab_size": self.vocab_size,
                  "target_length": self.target_length}
@@ -184,6 +184,11 @@ class Sampler:
         aligner.extend_gap_score = self.train_configs.validation_configs.gap_extension_penalty
         aligner.substitution_matrix = substitution_matrices.load(name=self.train_configs.validation_configs.substitution_matrix)
 
+        identity_aligner = Align.PairwiseAligner()
+        identity_aligner.mode = 'local'
+        identity_aligner.open_gap_score = 0
+        identity_aligner.extend_gap_score = 0
+
         data_loader = DataLoader(
             dataset,
             self.train_configs.model_configs.hyperparameters.batch_size,
@@ -193,20 +198,22 @@ class Sampler:
         
         if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
             total_loss = {"combined_loss": 0, 
-                        "perplexity": 0,
-                        "avg_alignment_score": 0,
-                        "avg_alignment_loss": 0,
-                        "avg_charge_at_pH7": 0,
-                        "avg_gravy": 0,
-                        "avg_instability_index": 0,
-                        "avg_molecular_weight": 0,
-                        "avg_charge_at_pH7_dev": 0,
-                        "avg_gravy_dev": 0,
-                        "avg_instability_index_dev": 0,
-                        "avg_molecular_weight_dev": 0,
-                        "empty_sequences": 0,
-                        "not_aligned": 0
-                        }
+                            "perplexity": 0,
+                            "avg_alignment_score": 0,
+                            "avg_alignment_loss": 0,
+                            "avg_alignment_identity_mismatch": 0,
+                            "avg_alignment_log_probability":0,
+                            "avg_charge_at_pH7": 0,
+                            "avg_gravy": 0,
+                            "avg_instability_index": 0,
+                            "avg_molecular_weight": 0,
+                            "avg_charge_at_pH7_dev": 0,
+                            "avg_gravy_dev": 0,
+                            "avg_instability_index_dev": 0,
+                            "avg_molecular_weight_dev": 0,
+                            "empty_sequences": 0,
+                            "not_aligned": 0
+                            }
         loss_fn = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
 
         total_examples = 0
@@ -256,9 +263,18 @@ class Sampler:
                     # total_loss["perplexity"] += perplexity.item() * num_examples
                 total_examples += num_examples
 
-            samples = self.model.generate_sequences(self.sequences_per_input, 
+            # If we do PT, use chain indicator as first token
+            if self.train_configs.training_configs.training_type == "ft":
+                y_init = batch_input_sequences[:,0].unsqueeze(
+                                dim=1
+                            ).to(self.device)
+            # If we do PT, use tokeniser BoS as first token
+            elif self.train_configs.training_configs.training_type == "pt":
+                y_init = None
+            samples, probabilities = self.model.generate_sequences(1, 
                                                     batch_input_sequences, 
-                                                    temperature=1.0, 
+                                                    y_init = y_init,
+                                                    temperature=0.5, 
                                                     batch_size=len(batch_input_sequences),
                                                     sample_method = self.configs.sample_method,
                                                     topk=self.configs.top_k,
@@ -297,19 +313,26 @@ class Sampler:
                         if len(sample) == 0:
                             total_loss["empty_sequences"] +=1
                             continue
-                        
+                        valid_length += 1
                         alignment = aligner.align(target, 
                                                     sample)
+                        identity_alignment = identity_aligner.align(target, 
+                                                                    sample)
+                        
                         if len(alignment) == 0:
                             alignment_score = 0
+                            identity_alignment_score = 0
                             total_loss["not_aligned"] +=1
                         else:
                             alignment_score = alignment[0].score
-                        valid_length += 1
+                            identity_alignment_score = identity_alignment[0].score
 
                         alignment_target = aligner.align(target, 
                                                     target)
+                        identity_alignment_target = identity_aligner.align(target, 
+                                                                    target)
                         alignment_target = alignment_target[0].score
+                        identity_alignment_target = identity_alignment_target[0].score
                         protein_params = ProtParam.ProteinAnalysis(sample)
                         charge_at_pH7 = protein_params.charge_at_pH(7)
                         gravy = protein_params.gravy()
@@ -324,6 +347,8 @@ class Sampler:
 
                         total_loss["avg_alignment_score"] += alignment_score
                         total_loss["avg_alignment_loss"] += (alignment_target - alignment_score)
+                        total_loss["avg_alignment_identity_mismatch"] += (identity_alignment_target - identity_alignment_score)
+                        total_loss["avg_alignment_log_probability"] += probabilities.sum()
                         total_loss["avg_charge_at_pH7"] += charge_at_pH7
                         total_loss["avg_gravy"] += gravy
                         total_loss["avg_instability_index"] += instability_index
@@ -334,6 +359,19 @@ class Sampler:
                         total_loss["avg_instability_index_dev"] += (instability_index - org_instability_index)
                         total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight)
 
+                        # if(self.configs.training_configs.verbose):
+                        #     with open(os.path.join(self.outputs_dir, self.configs.training_configs.samples_output_file), "a") as output_file:
+                        #         output_file.write(target + "\r\n")
+                        #         output_file.write(targets[i] + "\r\n")
+                        #         output_file.write(sample + "\r\n")
+                        #         output_file.write(samples[i] + "\r\n\r\n")
+                        
+                        # if(self.configs.training_configs.verbose and (alignment_target - alignment_score > 150)):
+                        #     with open(os.path.join(self.outputs_dir, self.configs.training_configs.verbose_output_file), "a") as output_file:
+                        #         output_file.write(target + "\r\n")
+                        #         output_file.write(targets[i] + "\r\n")
+                        #         output_file.write(sample + "\r\n")
+                        #         output_file.write(samples[i] + "\r\n\r\n")
                     with open(self.full_filename, "a") as output_file:
                         if (self.configs.verbose):
                             output_file.write(generated + "\r\n")
