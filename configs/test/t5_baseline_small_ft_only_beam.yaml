@@ -9,6 +9,6 @@ beam_width: 31
 sample_method: "beam"
 sample_conf:
   sample:
-    input_sequences_path: ./datasets/doggy_data/test_ft_input_1000
-    output_sequences_path: ./datasets/doggy_data/test_ft_output_1000
+    input_sequences_path: ./datasets/doggy_data/val_ft_input_1000
+    output_sequences_path: ./datasets/doggy_data/val_ft_output_1000
 run_validation: True

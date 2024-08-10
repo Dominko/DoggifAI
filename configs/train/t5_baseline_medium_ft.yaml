@@ -18,9 +18,9 @@ model_configs:
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
     max_seq_len: 150
-    hidden_dim: 128
+    hidden_dim: 256
     nhead: 4
-    num_layers: 2
+    num_layers: 4
     ff_size: 2048
     regularizers: []
     dropout: 0.1
@@ -38,7 +38,7 @@ training_configs:
   outputs_dir: "ft_train_outputs"
   training_type: "ft"
   wandb_project: "doggy_ai_ft"
-  wandb_name: "doggy_ai_ft_small"
+  wandb_name: "doggy_ai_ft_medium"
   verbose: True
   verbose_output_file: "debug_outputs"
   samples_output_file: "samples_output"

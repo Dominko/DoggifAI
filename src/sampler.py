@@ -287,7 +287,7 @@ class Sampler:
             samples = self.tokenizer.batch_decode(samples)
             cdrs = self.tokenizer.batch_decode(batch_input_sequences)
             if self.validate:
-                targets = self.tokenizer.batch_decode(batch_output_sequences)
+                targets = self.tokenizer.batch_decode(batch_expected_output_sequences)
             
             # Compute local alignment scores
             for i in range(len(batch_input_sequences)):
@@ -302,7 +302,7 @@ class Sampler:
                     with open(self.full_filename, "a") as output_file:
                         output_file.write("\r\ninput: " + cdrs[i] + "\r\n")
 
-                for j in range(self.sequences_per_input):          
+                for j in range(self.sequences_per_input):       
                     generated = samples[i*self.sequences_per_input+j]
                     if self.train_configs.training_configs.training_type == "ft":
                         sample = reconstruct_ft_sequence(generated, cdrs[i])
