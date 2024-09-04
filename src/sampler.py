@@ -63,11 +63,11 @@ class Sampler:
         # Dataset setup
         # self.padding_idx = train_dataset.tokenizer.enc_dict["-"]
         # if START_TOKEN in train_dataset.tokenizer.enc_dict:
-        if prepend_start_token:
+        # if prepend_start_token:
             # self.start_idx = train_dataset.tokenizer.enc_dict[START_TOKEN]
-            self.start_idx = 1
-        else:
-            self.start_idx = 0
+            # self.start_idx = 1
+        # else:
+            # self.start_idx = 0
 
         self.sample_dataset = sample_dataset
         self.sequences_per_input = sequences_per_input
@@ -186,14 +186,16 @@ class Sampler:
 
         identity_aligner = Align.PairwiseAligner()
         identity_aligner.mode = 'local'
-        identity_aligner.open_gap_score = 0
-        identity_aligner.extend_gap_score = 0
+        identity_aligner.open_gap_score = -1
+        identity_aligner.extend_gap_score = -1
 
         data_loader = DataLoader(
             dataset,
             self.train_configs.model_configs.hyperparameters.batch_size,
             collate_fn=dataset.getCollator(),
-            shuffle=True,
+            shuffle=False,
+            num_workers=8,
+            pin_memory=True
         )
         
         if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
@@ -243,7 +245,13 @@ class Sampler:
                 batch_provided_output_sequences = batch_output_sequences[:,:-1]
                 batch_expected_output_sequences = batch_output_sequences[:,1:]
 
+                # print(batch_input_sequences[0])
+                # print(batch_provided_output_sequences[0])
+                # print(batch_expected_output_sequences[0])
+                # raise Exception()
+                
                 outputs = self.model(batch_input_sequences, batch_provided_output_sequences)
+                
                 outputs = outputs.permute(0, 2, 1)
                 combined_loss = loss_fn(outputs, batch_expected_output_sequences)
 
@@ -256,6 +264,18 @@ class Sampler:
                 # Average by gradient accumulation step if any
                 combined_loss = combined_loss / self.grad_accumulation_step
 
+                combined_loss.backward()
+
+                # print(f"combined_loss (early): {combined_loss.item()}")
+
+                # # Run backprop if iteration falls on the gradient accumulation step
+                # if ((iteration + 1) % self.grad_accumulation_step == 0) or (
+                #     (iteration + 1) == len(data_loader)
+                # ):
+                #     self.optimizer.step()
+                #     self.optimizer.zero_grad()
+
+                print(f"combined_loss: {combined_loss.item()}")
                 # Accumulate epoch loss
                 num_examples = batch_input_sequences.size(0)
                 if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
@@ -271,6 +291,7 @@ class Sampler:
             # If we do PT, use tokeniser BoS as first token
             elif self.train_configs.training_configs.training_type == "pt":
                 y_init = None
+            # print(self.tokenizer.batch_decode([2]))
             samples, probabilities = self.model.generate_sequences(1, 
                                                     batch_input_sequences, 
                                                     y_init = y_init,
@@ -281,7 +302,11 @@ class Sampler:
                                                     beam_width=self.configs.beam_width)
             
             # print(self.tokenizer.eos_token_id)
+            # print(batch_provided_output_sequences[0])
             # print(samples[0])
+
+            # print(self.tokenizer.batch_decode(batch_provided_output_sequences)[0])
+            # print(self.tokenizer.batch_decode(samples)[0])
             # raise Exception()
 
             samples = self.tokenizer.batch_decode(samples)
@@ -380,6 +405,8 @@ class Sampler:
         if self.validate:
             total_loss["avg_alignment_score"] /= valid_length
             total_loss["avg_alignment_loss"] /= valid_length
+            total_loss["avg_alignment_identity_mismatch"] /= valid_length
+            total_loss["avg_alignment_log_probability"] /= valid_length
             total_loss["avg_charge_at_pH7"] /= valid_length
             total_loss["avg_gravy"] /= valid_length
             total_loss["avg_instability_index"] /= valid_length
@@ -390,6 +417,8 @@ class Sampler:
             total_loss["avg_instability_index_dev"] /= valid_length
             total_loss["avg_molecular_weight_dev"] /= valid_length
 
+            print(f"Total examples: {total_examples}")
+            print(f"combined_loss: {total_loss['combined_loss']}")
             total_loss["combined_loss"] = total_loss["combined_loss"] / total_examples
             total_loss["perplexity"] = total_loss["perplexity"] / total_examples
 

@@ -134,44 +134,44 @@ class DoggyT5Simple(nn.Module):
         self, num_sequences_per_input, inputs, y_init=None, temperature=1.0, batch_size=None, topk=1, beam_width=5, trim_to_eos=True, sample_method="topk"
     ):
         self.eval()
-        
-        if y_init == None:
-            y_init = torch.ones((len(inputs), 1), dtype=torch.long) * self.bos_idx
+        with torch.no_grad():
+            if y_init == None:
+                y_init = torch.ones((len(inputs), 1), dtype=torch.long) * self.bos_idx
 
-        if sample_method == "topk":
-            samples, probabilities = self.topk_generator(num_sequences_per_input, 
-                                       inputs, 
-                                       y_init,
-                                       temperature = temperature, 
-                                       batch_size = batch_size, 
-                                       topk = topk, 
-                                       trim_to_eos = trim_to_eos
-                                       )
-        elif sample_method == "beam":
-            samples, probabilities = self.beam_generator(num_sequences_per_input, 
-                                       inputs, 
-                                       y_init,
-                                       temperature = temperature, 
-                                       batch_size = batch_size, 
-                                       beam_width = beam_width, 
-                                       trim_to_eos = trim_to_eos
-                                       )
-        else:
-            raise NotImplementedError()
-        
-        if trim_to_eos:
-            samples = samples.detach().cpu().numpy()
-            for i in range(0, len(samples)):
-                # Fidn the eos token
-                indices = np.argwhere(samples[i]==self.eos_idx)
-                if len(indices) == 0:
-                    continue
-                idx = indices[0][0]
-                samples[i][idx+1:] = self.padding_idx
+            if sample_method == "topk":
+                samples, probabilities = self.topk_generator(num_sequences_per_input, 
+                                        inputs, 
+                                        y_init,
+                                        temperature = temperature, 
+                                        batch_size = batch_size, 
+                                        topk = topk, 
+                                        trim_to_eos = trim_to_eos
+                                        )
+            elif sample_method == "beam":
+                samples, probabilities = self.beam_generator(num_sequences_per_input, 
+                                        inputs, 
+                                        y_init,
+                                        temperature = temperature, 
+                                        batch_size = batch_size, 
+                                        beam_width = beam_width, 
+                                        trim_to_eos = trim_to_eos
+                                        )
+            else:
+                raise NotImplementedError()
             
-            samples = torch.from_numpy(samples).to(self.device)
+            if trim_to_eos:
+                samples = samples.detach().cpu().numpy()
+                for i in range(0, len(samples)):
+                    # Fidn the eos token
+                    indices = np.argwhere(samples[i]==self.eos_idx)
+                    if len(indices) == 0:
+                        continue
+                    idx = indices[0][0]
+                    samples[i][idx+1:] = self.padding_idx
+                
+                samples = torch.from_numpy(samples).to(self.device)
 
-        return samples, probabilities
+            return samples, probabilities
     
     def beam_generator(
             self, num_sequences_per_input, inputs, y_inits, temperature=1.0, batch_size=None, beam_width=1, trim_to_eos=True
@@ -189,11 +189,11 @@ class DoggyT5Simple(nn.Module):
             probability = probability.squeeze(0)
 
             if outputs == None:
-                outputs = out[:num_sequences_per_input]
-                probabilities = probability[:num_sequences_per_input]
+                outputs = out[-num_sequences_per_input:]
+                probabilities = probability[-num_sequences_per_input:]
             else:
-                outputs = torch.cat((outputs, out[:num_sequences_per_input]), axis=0)
-                probabilities = torch.cat((probabilities, probability[:num_sequences_per_input]), axis=0)
+                outputs = torch.cat((outputs, out[-num_sequences_per_input:]), dim=0)
+                probabilities = torch.cat((probabilities, probability[-num_sequences_per_input:]), dim=0)
 
         return outputs, probabilities
 

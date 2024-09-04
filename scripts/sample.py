@@ -47,8 +47,6 @@ def main():
         **common_utils.load_yaml(configs.pretrained_model_configs_path)
     )
 
-    print(configs.top_k)
-
     sequences_per_input = args.sequences_per_input
 
     common_utils.setup_random_seed(configs.random_seed)
@@ -96,7 +94,7 @@ def main():
         tokenizer = T5Tokenizer(
             vocab_file=train_configs.model_configs.tokenizer_path,
             extra_ids=train_configs.dataset_configs.extra_ids,
-            legacy=True,
+            legacy=False,
             bos_token="<s>"
         )
     if tokenizer == "BPE":

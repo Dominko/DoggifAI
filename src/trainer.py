@@ -182,15 +182,15 @@ class Trainer:
             data_length = dataset.__len__()
 
         aligner = Align.PairwiseAligner()
-        aligner.mode = 'global'
+        aligner.mode = 'local'
         aligner.open_gap_score = self.configs.validation_configs.gap_insertion_penalty
         aligner.extend_gap_score = self.configs.validation_configs.gap_extension_penalty
         aligner.substitution_matrix = substitution_matrices.load(name=self.configs.validation_configs.substitution_matrix)
 
         identity_aligner = Align.PairwiseAligner()
-        identity_aligner.mode = 'global'
-        identity_aligner.open_gap_score = 0
-        identity_aligner.extend_gap_score = 0
+        identity_aligner.mode = 'local'
+        identity_aligner.open_gap_score = -1
+        identity_aligner.extend_gap_score = -1
 
         ## Create DataLoader for sampling
         # if self.configs.training_configs.training_type == "ft":
@@ -267,6 +267,7 @@ class Trainer:
         ):
             if data_split == "train":
                 self.model.train()
+                self.optimizer.zero_grad()
             else:
                 self.model.eval()
             # Load data to GPU
@@ -278,52 +279,14 @@ class Trainer:
             elif self.configs.training_configs.training_type == "pt":
                 batch_output_sequences = batch["labels"].to(self.device)
                 batch_input_sequences = batch["input_ids"].to(self.device)
-            # batch_codon_adaptation_indices = batch_codon_adaptation_indices.to(self.device)
 
-            # print(batch_output_sequences[0])
-            # print(self.tokenizer.decode(batch_output_sequences[0]))
-            # print(batch_output_sequences[1])
-            # print(self.tokenizer.decode(batch_output_sequences[1]))
-            # print(batch_output_sequences[2])
-            # print(self.tokenizer.decode(batch_output_sequences[2]))
-
-            ######## Run one step of training V1
-            # if epoch == 999:
-            #     outputs = self.model.step(batch_input_sequences, batch_output_sequences, debug=True)
-            # else:
-            #     outputs = self.model.step(batch_input_sequences, batch_output_sequences, debug=False)
-            # if self.model_type in ["DoggyTransformer", "t5", "t5_simple"]:
-            #     combined_loss = outputs["loss"]
-            #     perplexity = outputs["perplexity"]
-            ########
-
-            ######## Run one step of training V2
-            # Now we shift the tgt by one so with the <SOS> we predict the token at pos 1
             batch_provided_output_sequences = batch_output_sequences[:,:-1]
             batch_expected_output_sequences = batch_output_sequences[:,1:]
 
-            # print(batch_output_sequences[0])
-            # # print(batch_input_sequences[0])
-            # print(batch_provided_output_sequences[0])
-            # print(batch_expected_output_sequences[0])
-
-            # print(self.tokenizer.batch_decode(batch_input_sequences)[0])
-            # print(self.tokenizer.batch_decode(batch_provided_output_sequences)[0])
-            # print(self.tokenizer.batch_decode(batch_expected_output_sequences)[0])
-            # raise Exception()
-
             outputs = self.model(batch_input_sequences, batch_provided_output_sequences)
-
-            # raise Exception()
             outputs = outputs.permute(0, 2, 1)
-
-            # print(outputs.shape)
-            # print(batch_expected_output_sequences.shape)
-            # print(self.tokenizer.batch_decode(batch_expected_output_sequences)[0])
-            # raise Exception()
             
             combined_loss = loss_fn(outputs, batch_expected_output_sequences)
-            ########
 
             # Stop training if loss becomes inf or nan
             if torch.isinf(combined_loss):
@@ -351,119 +314,112 @@ class Trainer:
                 total_loss["combined_loss"] += combined_loss.item() * num_examples
                 # total_loss["perplexity"] += perplexity.item() * num_examples
             total_examples += num_examples
-
+            
             # if (data_split == "val" or data_split == "train") and iteration < 100 and epoch >= 500:
+            
             if (data_split == "val" or data_split == "train") and iteration < 100:
-                self.model.eval()
-                # If we do PT, use chain indicator as first token
-                if self.configs.training_configs.training_type == "ft":
-                    y_init = batch_input_sequences[:,0].unsqueeze(
-                                    dim=1
-                                ).to(self.device)
-                # If we do PT, use tokeniser BoS as first token
-                elif self.configs.training_configs.training_type == "pt":
-                    y_init = None
-                samples, probabilities = self.model.generate_sequences(1, 
-                                                        batch_input_sequences, 
-                                                        y_init = y_init,
-                                                        temperature=0.5, 
-                                                        batch_size=len(batch_input_sequences),
-                                                        sample_method = self.configs.validation_configs.sample_method,
-                                                        topk=self.configs.validation_configs.top_k,
-                                                        beam_width=self.configs.validation_configs.beam_width)
-                # print(samples)
-                if data_split == "train":
-                    self.model.train()
-                else:
-                    self.model.eval() 
-
-                # print(samples[0])
-                # print(batch_expected_output_sequences[0])
-                # print(batch_input_sequences[0])
-
-                samples = self.tokenizer.batch_decode(samples)
-                targets = self.tokenizer.batch_decode(batch_expected_output_sequences)
-                cdrs = self.tokenizer.batch_decode(batch_input_sequences)
-
-                # print(samples[0])
-                # print(targets[0])
-                # print(cdrs[0])
-
-                # Compute local alignment scores
-                for i in range(len(batch_input_sequences)):      
+                with torch.no_grad():
+                    self.model.eval()
+                    # If we do PT, use chain indicator as first token
                     if self.configs.training_configs.training_type == "ft":
-                        target = reconstruct_ft_sequence(targets[i], cdrs[i])
-                        sample = reconstruct_ft_sequence(samples[i], cdrs[i])
+                        y_init = batch_input_sequences[:,0].unsqueeze(
+                                        dim=1
+                                    ).to(self.device)
+                    # If we do PT, use tokeniser BoS as first token
+                    elif self.configs.training_configs.training_type == "pt":
+                        y_init = None
+                    samples, probabilities = self.model.generate_sequences(1, 
+                                                            batch_input_sequences, 
+                                                            y_init = y_init,
+                                                            temperature=0.5, 
+                                                            batch_size=len(batch_input_sequences),
+                                                            sample_method = self.configs.validation_configs.sample_method,
+                                                            topk=self.configs.validation_configs.top_k,
+                                                            beam_width=self.configs.validation_configs.beam_width)
+                    # print(samples)
+                    if data_split == "train":
+                        self.model.train()
                     else:
-                        target = reconstruct_pt_sequence(cdrs[i], targets[i])
-                        sample = reconstruct_pt_sequence(cdrs[i], samples[i])
+                        self.model.eval() 
 
-                    # if i == 1 or i == 2:
-                    # print(target)
-                    # print(sample)
+                    samples = self.tokenizer.batch_decode(samples)
+                    targets = self.tokenizer.batch_decode(batch_expected_output_sequences)
+                    cdrs = self.tokenizer.batch_decode(batch_input_sequences)
 
-                    if len(sample) == 0:
-                        total_loss["empty_sequences"] +=1
-                        continue
-                    valid_length += 1
-                    alignment = aligner.align(target, 
-                                                sample)
-                    identity_alignment = identity_aligner.align(target, 
-                                                                sample)
-                    
-                    if len(alignment) == 0:
-                        alignment_score = 0
-                        identity_alignment_score = 0
-                        total_loss["not_aligned"] +=1
-                    else:
-                        alignment_score = alignment[0].score
-                        identity_alignment_score = identity_alignment[0].score
+                    # Compute local alignment scores
+                    for i in range(len(batch_input_sequences)):      
+                        if self.configs.training_configs.training_type == "ft":
+                            target = reconstruct_ft_sequence(targets[i], cdrs[i])
+                            sample = reconstruct_ft_sequence(samples[i], cdrs[i])
+                        else:
+                            target = reconstruct_pt_sequence(cdrs[i], targets[i])
+                            sample = reconstruct_pt_sequence(cdrs[i], samples[i])
 
-                    alignment_target = aligner.align(target, 
-                                                target)
-                    identity_alignment_target = identity_aligner.align(target, 
-                                                                target)
-                    alignment_target = alignment_target[0].score
-                    identity_alignment_target = identity_alignment_target[0].score
-                    protein_params = ProtParam.ProteinAnalysis(sample)
-                    charge_at_pH7 = protein_params.charge_at_pH(7)
-                    gravy = protein_params.gravy()
-                    instability_index = protein_params.instability_index()
-                    molecular_weight = protein_params.molecular_weight()
+                        # if i == 1 or i == 2:
+                        # print(target)
+                        # print(sample)
 
-                    org_protein_params = ProtParam.ProteinAnalysis(target)
-                    org_charge_at_pH7 = org_protein_params.charge_at_pH(7)
-                    org_gravy = org_protein_params.gravy()
-                    org_instability_index = org_protein_params.instability_index()
-                    org_molecular_weight = org_protein_params.molecular_weight()
+                        if len(sample) == 0:
+                            total_loss["empty_sequences"] +=1
+                            continue
+                        valid_length += 1
+                        alignment = aligner.align(target, 
+                                                    sample)
+                        identity_alignment = identity_aligner.align(target, sample)
+                        if len(alignment) == 0 or len(identity_alignment) == 0:
+                            alignment_score = 0
+                            identity_alignment_score = 0
+                            total_loss["not_aligned"] +=1
+                        else:
+                            alignment_score = alignment[0].score
+                            identity_alignment_score = identity_alignment[0].score
 
-                    total_loss["avg_alignment_score"] += alignment_score
-                    total_loss["avg_alignment_loss"] += (alignment_target - alignment_score)
-                    total_loss["avg_alignment_identity_mismatch"] += (identity_alignment_target - identity_alignment_score)
-                    total_loss["avg_alignment_log_probability"] += probabilities.sum()
-                    total_loss["avg_charge_at_pH7"] += charge_at_pH7
-                    total_loss["avg_gravy"] += gravy
-                    total_loss["avg_instability_index"] += instability_index
-                    total_loss["avg_molecular_weight"] += molecular_weight
+                        alignment_target = aligner.align(target, 
+                                                    target)
+                        identity_alignment_target = identity_aligner.align(target, 
+                                                                    target)
+                        
+                        alignment_target = alignment_target[0].score
+                        identity_alignment_target = identity_alignment_target[0].score
+                        protein_params = ProtParam.ProteinAnalysis(sample)
+                        charge_at_pH7 = protein_params.charge_at_pH(7)
+                        gravy = protein_params.gravy()
+                        instability_index = protein_params.instability_index()
+                        molecular_weight = protein_params.molecular_weight()
 
-                    total_loss["avg_charge_at_pH7_dev"] += (charge_at_pH7 - org_charge_at_pH7)
-                    total_loss["avg_gravy_dev"] += (gravy - org_gravy)
-                    total_loss["avg_instability_index_dev"] += (instability_index - org_instability_index)
-                    total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight)
+                        org_protein_params = ProtParam.ProteinAnalysis(target)
+                        org_charge_at_pH7 = org_protein_params.charge_at_pH(7)
+                        org_gravy = org_protein_params.gravy()
+                        org_instability_index = org_protein_params.instability_index()
+                        org_molecular_weight = org_protein_params.molecular_weight()
 
-                    if(self.configs.training_configs.verbose):
-                        with open(os.path.join(self.outputs_dir, self.configs.training_configs.samples_output_file), "a") as output_file:
-                            output_file.write(target + "\r\n")
-                            output_file.write(targets[i] + "\r\n")
-                            output_file.write(sample + "\r\n")
-                            output_file.write(samples[i] + "\r\n\r\n")
-                    
-                    if(self.configs.training_configs.verbose and (alignment_target - alignment_score > 150)):
-                        with open(os.path.join(self.outputs_dir, self.configs.training_configs.verbose_output_file), "a") as output_file:
-                            output_file.write(target + "\r\n")
-                            output_file.write(targets[i] + "\r\n")
-                            output_file.write(sample + "\r\n")
-                            output_file.write(samples[i] + "\r\n\r\n")
+                        total_loss["avg_alignment_score"] += alignment_score
+                        total_loss["avg_alignment_loss"] += (alignment_target - alignment_score)
+                        total_loss["avg_alignment_identity_mismatch"] += (identity_alignment_target - identity_alignment_score)
+                        total_loss["avg_alignment_log_probability"] += probabilities.sum()
+                        total_loss["avg_charge_at_pH7"] += charge_at_pH7
+                        total_loss["avg_gravy"] += gravy
+                        total_loss["avg_instability_index"] += instability_index
+                        total_loss["avg_molecular_weight"] += molecular_weight
+
+                        total_loss["avg_charge_at_pH7_dev"] += (charge_at_pH7 - org_charge_at_pH7)
+                        total_loss["avg_gravy_dev"] += (gravy - org_gravy)
+                        total_loss["avg_instability_index_dev"] += (instability_index - org_instability_index)
+                        total_loss["avg_molecular_weight_dev"] += (molecular_weight - org_molecular_weight)
+
+                        if(self.configs.training_configs.verbose):
+                            with open(os.path.join(self.outputs_dir, self.configs.training_configs.samples_output_file), "a") as output_file:
+                                output_file.write(target + "\r\n")
+                                output_file.write(targets[i] + "\r\n")
+                                output_file.write(sample + "\r\n")
+                                output_file.write(samples[i] + "\r\n\r\n")
+                        
+                        if(self.configs.training_configs.verbose and (alignment_target - alignment_score > 150)):
+                            with open(os.path.join(self.outputs_dir, self.configs.training_configs.verbose_output_file), "a") as output_file:
+                                output_file.write(target + "\r\n")
+                                output_file.write(targets[i] + "\r\n")
+                                output_file.write(sample + "\r\n")
+                                output_file.write(samples[i] + "\r\n\r\n")
 
         if (valid_length != 0):
             total_loss["avg_alignment_score"] /= valid_length
@@ -480,9 +436,10 @@ class Trainer:
             total_loss["avg_instability_index_dev"] /= valid_length
             total_loss["avg_molecular_weight_dev"] /= valid_length
 
+        print(total_loss["combined_loss"])
+        print(total_examples)
         total_loss["combined_loss"] = total_loss["combined_loss"] / total_examples
         total_loss["perplexity"] = total_loss["perplexity"] / total_examples
-
         # if data_split == "val":
         #     data_loader = DataLoader(
         #         dataset,

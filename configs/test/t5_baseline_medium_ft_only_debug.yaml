@@ -1,0 +1,14 @@
+device: 0
+random_seed: 1234
+outputs_dir: "sample_outputs"
+pretrained_model_state_dict_path: ft_train_outputs/medium_ft_only/checkpoint_11.pt
+pretrained_model_configs_path: ft_train_outputs/medium_ft_only/configs.yaml
+top_k: 1
+beam_width: 131
+sample_method: "topk"
+sample_conf:
+  sample:
+    input_sequences_path: ./datasets/doggy_data/val_ft_input_1000
+    output_sequences_path: ./datasets/doggy_data/val_ft_output_1000
+run_validation: True
+verbose: True
