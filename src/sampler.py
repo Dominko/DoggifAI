@@ -448,6 +448,9 @@ class Sampler:
         Args:
             model_state_dict_path (str): Path to the pretrained model file
         """
+        # print(torch.load(model_state_dict_path, self.device)["model_state_dict"])
+        # raise Exception()
+
         self.model.load_state_dict(
             torch.load(model_state_dict_path, self.device)["model_state_dict"]
         )
