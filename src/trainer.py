@@ -182,13 +182,13 @@ class Trainer:
             data_length = dataset.__len__()
 
         aligner = Align.PairwiseAligner()
-        aligner.mode = 'local'
+        aligner.mode = 'global'
         aligner.open_gap_score = self.configs.validation_configs.gap_insertion_penalty
         aligner.extend_gap_score = self.configs.validation_configs.gap_extension_penalty
         aligner.substitution_matrix = substitution_matrices.load(name=self.configs.validation_configs.substitution_matrix)
 
         identity_aligner = Align.PairwiseAligner()
-        identity_aligner.mode = 'local'
+        identity_aligner.mode = 'global'
         identity_aligner.open_gap_score = -1
         identity_aligner.extend_gap_score = -1
 
