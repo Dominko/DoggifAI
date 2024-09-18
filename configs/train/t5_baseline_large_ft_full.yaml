@@ -17,7 +17,7 @@ model_configs:
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
-    max_seq_len: 188
+    max_seq_len: 150
     hidden_dim: 1024
     nhead: 16
     num_layers: 8
