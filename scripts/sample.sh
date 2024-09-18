@@ -11,6 +11,7 @@ echo "Job running on ${SLURM_JOB_NODELIST}"
 dt=$(date '+%d/%m/%Y %H:%M:%S')
 echo "Job started: $dt"
 
+# Needed to get conda to tun
 module purge
 module load baskerville
 module load Miniconda3/4.10.3
@@ -33,7 +34,6 @@ echo "Running experiment"
 echo "Config: $1"
 
 echo "Running experiment"
-# limit of 12 GB GPU is hidden 256 and batch size 256
 python scripts/sample.py \
 --config_filepath $1 \
 --sequences_per_input 1
