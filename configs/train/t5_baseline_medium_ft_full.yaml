@@ -13,11 +13,11 @@ dataset_configs:
   extra_ids: 100
 model_configs:
   model_type: t5_simple
-  model_state_dict_path: ./train_outputs/2024_07_27__00_59_41/checkpoint_99.pt
+  model_state_dict_path: ./train_outputs/2024_09_16__17_41_19/checkpoint_86.pt
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
-    max_seq_len: 188
+    max_seq_len: 150
     hidden_dim: 256
     nhead: 4
     num_layers: 4
