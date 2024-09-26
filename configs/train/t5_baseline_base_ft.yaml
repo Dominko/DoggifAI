@@ -13,7 +13,7 @@ dataset_configs:
   extra_ids: 100
 model_configs:
   model_type: t5_simple
-  model_state_dict_path: ./train_outputs/2024_07_13__11_43_25/checkpoint_71.pt
+  model_state_dict_path: ./train_outputs/2024_09_18__22_28_52/checkpoint_12.pt
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
