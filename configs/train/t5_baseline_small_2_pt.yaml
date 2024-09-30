@@ -1,30 +1,26 @@
 dataset_configs:
   train:
-    input_sequences_path: ./datasets/doggy_data/train_ft_input
-    output_sequences_path: ./datasets/doggy_data/train_ft_output
+    output_sequences_path: ./datasets/doggy_data/train_pt
   val:
-    input_sequences_path: ./datasets/doggy_data/val_ft_input
-    output_sequences_path: ./datasets/doggy_data/val_ft_output
+    output_sequences_path: ./datasets/doggy_data/val_pt
   test:
-    input_sequences_path: ./datasets/doggy_data/test_ft_input
-    output_sequences_path: ./datasets/doggy_data/test_ft_output
+    output_sequences_path: ./datasets/doggy_data/test_pt
   corrupted_percentage: 0.15
   mean_noise_span_length: 3.0
   extra_ids: 100
 model_configs:
   model_type: t5_simple
-  model_state_dict_path: ./train_outputs/2024_09_18__22_36_17/checkpoint_20.pt
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
     max_seq_len: 150
-    hidden_dim: 512
-    nhead: 8
-    num_layers: 8
+    hidden_dim: 128
+    nhead: 4
+    num_layers: 4
     ff_size: 2048
     regularizers: []
     dropout: 0.1
-    batch_size: 128
+    batch_size: 256
     optimizer: "adam"
     learning_rate: 1e-4
     grad_accumulation_step: 1
@@ -35,10 +31,13 @@ training_configs:
   checkpoint_steps: 1
   device: 0
   random_seed: 1234
-  outputs_dir: "ft_train_outputs"
-  training_type: "ft"
-  wandb_project: "doggy_ai_ft"
-  wandb_name: "doggy_ai_ft_base_full"
+  outputs_dir: "train_outputs"
+  training_type: "pt"
+  wandb_project: "doggy_ai_pt"
+  wandb_name: "doggy_ai_pt_medium"
+  verbose: True
+  verbose_output_file: "debug_outputs"
+  samples_output_file: "samples_output"
 validation_configs:
   substitution_matrix: "PAM30"
   gap_insertion_penalty: -11
