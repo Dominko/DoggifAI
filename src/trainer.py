@@ -366,13 +366,19 @@ class Trainer:
                         alignment = aligner.align(target, 
                                                     sample)
                         identity_alignment = identity_aligner.align(target, sample)
-                        if len(alignment) == 0 or len(identity_alignment) == 0:
+
+                        try:
+                            if len(alignment) == 0 or len(identity_alignment) == 0:
+                                alignment_score = 0
+                                identity_alignment_score = 0
+                                total_loss["not_aligned"] += 1
+                            else:
+                                alignment_score = alignment[0].score
+                                identity_alignment_score = identity_alignment[0].score
+                        except OverflowError:
                             alignment_score = 0
                             identity_alignment_score = 0
-                            total_loss["not_aligned"] +=1
-                        else:
-                            alignment_score = alignment[0].score
-                            identity_alignment_score = identity_alignment[0].score
+                            total_loss["not_aligned"] += 1
 
                         alignment_target = aligner.align(target, 
                                                     target)
