@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --qos epsrc
-#SBATCH --acount
 #SBATCH --time 1:59:59
 #SBATCH --nodes 1
 #SBATCH --tasks-per-node 1
