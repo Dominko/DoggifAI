@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --qos epsrc
+#SBATCH --acount
 #SBATCH --time 1:59:59
 #SBATCH --nodes 1
 #SBATCH --tasks-per-node 1
@@ -21,7 +22,7 @@ eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
 CONDA_ENV_NAME=spike_rna
 # CONDA_ENV_PATH="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/envs/${CONDA_ENV_NAME}"
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
-mamba activate ${CONDA_ENV_NAME}
+conda activate ${CONDA_ENV_NAME}
 
 echo "Setting up Wandb API key"
 key=`cat scripts/wandb_key`
