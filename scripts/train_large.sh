@@ -15,7 +15,7 @@ echo "Job started: $dt"
 module purge
 module load baskerville
 module load Miniforge3/24.1.2-0
-eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
+eval "$(${EBROOTMINIFORGE3}/bin/conda shell.bash hook)"
 
 # echo "Setting up bash enviroment"
 # source ~/.bashrc
@@ -29,7 +29,7 @@ eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
 CONDA_ENV_NAME=spike_rna
 # CONDA_ENV_PATH="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/envs/${CONDA_ENV_NAME}"
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
-mamba activate ${CONDA_ENV_NAME}
+conda activate ${CONDA_ENV_NAME}
 
 echo "Setting up Wandb API key"
 key=`cat scripts/wandb_key`

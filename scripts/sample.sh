@@ -15,7 +15,7 @@ echo "Job started: $dt"
 module purge
 module load baskerville
 module load Miniforge3/24.1.2-0
-eval "$(${EBROOTMINICONDA3}/bin/conda shell.bash hook)"
+eval "$(${EBROOTMINIFORGE3}/bin/conda shell.bash hook)"
 
 # Activate your conda environment
 CONDA_ENV_NAME=spike_rna
