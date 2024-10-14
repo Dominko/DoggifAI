@@ -13,7 +13,7 @@ dataset_configs:
   extra_ids: 100
 model_configs:
   model_type: t5_simple
-  model_state_dict_path: ./train_outputs/2024_09_16__17_41_19/checkpoint_86.pt
+  model_state_dict_path: ./train_outputs/2024_09_30__17_31_57/checkpoint_90.pt
   tokenizer: Base
   tokenizer_path: ./datasets/vocab/test.model
   hyperparameters:
@@ -38,7 +38,7 @@ training_configs:
   outputs_dir: "ft_train_outputs"
   training_type: "ft"
   wandb_project: "doggy_ai_ft"
-  wandb_name: "doggy_ai_ft_medium_full"
+  wandb_name: "doggy_ai_ft_small_2_full"
   verbose: True
   verbose_output_file: "debug_outputs"
   samples_output_file: "samples_output"
