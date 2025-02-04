@@ -5,11 +5,9 @@ pretrained_model_state_dict_path: ./ft_train_outputs/2024_10_03__14_25_14/checkp
 pretrained_model_configs_path: ./ft_train_outputs/2024_10_03__14_25_14/configs.yaml
 top_k: 1
 beam_width: 31
-sample_method: "topk"
+sample_method: "beam"
 sample_conf:
   sample:
-    input_sequences_path: ./datasets/doggy_data/7ru8_input
-    output_sequences_path: ./datasets/doggy_data/7ru8_output
+    input_sequences_path: ./datasets/doggy_data/pdl1_input
+    output_sequences_path: ./datasets/doggy_data/pdl1_output
 run_validation: True
-fixed_residue_file: ./datasets/doggy_data/7ru8_fixed_residues
-verbose: True

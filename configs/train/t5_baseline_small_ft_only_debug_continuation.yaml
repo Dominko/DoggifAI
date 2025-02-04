@@ -28,7 +28,7 @@ model_configs:
     learning_rate: 1e-4
     grad_accumulation_step: 1
     immunogenicity_as_value: False
-  model_state_dict_path: ./ft_train_outputs/2024_08_03__04_28_37/checkpoint_15.pt
+  model_state_dict_path: ./ft_train_outputs/2024_07_09__18_44_42/checkpoint_90.pt
   model_id: ygvykiai
   start_epoch: 90
 training_configs:

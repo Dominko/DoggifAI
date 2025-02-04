@@ -8,8 +8,8 @@ beam_width: 31
 sample_method: "topk"
 sample_conf:
   sample:
-    input_sequences_path: ./datasets/doggy_data/7ru8_input
-    output_sequences_path: ./datasets/doggy_data/7ru8_output
+    input_sequences_path: ./datasets/doggy_data/pdl1_input
+    output_sequences_path: ./datasets/doggy_data/pdl1_output
 run_validation: True
-fixed_residue_file: ./datasets/doggy_data/7ru8_fixed_residues
+fixed_residue_file: ./datasets/doggy_data/pdl1_fixed_residues
 verbose: True

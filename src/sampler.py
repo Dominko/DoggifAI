@@ -1,4 +1,6 @@
+import json
 import os
+import pickle
 
 import torch
 import tqdm
@@ -176,6 +178,13 @@ class Sampler:
         # Set model mode to train
         self.model.eval()
         dataset = self.sample_dataset
+        if self.configs.fixed_residue_file is not None:
+            print("Loading fixed residues")
+            print(self.configs.fixed_residue_file)
+            with open(self.configs.fixed_residue_file, "rb") as f:
+                fixed_residues = pickle.load(f)
+        else:
+            fixed_residues = None
         data_length = dataset.__len__()
 
         aligner = Align.PairwiseAligner()
@@ -299,7 +308,8 @@ class Sampler:
                                                     batch_size=len(batch_input_sequences),
                                                     sample_method = self.configs.sample_method,
                                                     topk=self.configs.top_k,
-                                                    beam_width=self.configs.beam_width)
+                                                    beam_width=self.configs.beam_width,
+                                                    fixed_residues=fixed_residues)
             
             # print(self.tokenizer.eos_token_id)
             # print(batch_provided_output_sequences[0])

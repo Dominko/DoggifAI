@@ -84,3 +84,4 @@ class TestingConfigs(BaseModel):
     sample_conf: DatasetConfigs
     run_validation: bool = True
     verbose: bool = False
+    fixed_residue_file: Optional[str] = None

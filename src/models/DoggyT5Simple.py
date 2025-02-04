@@ -7,7 +7,6 @@ from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
 from src.configs import ModelConfigs
-from src.constants import AA_DICT
 from src.utils.model_utils import generate_square_subsequent_mask
 
 import random
@@ -16,6 +15,7 @@ import random
 # from torchaudio.models.decoder import ctc_decoder
 
 from src.models.decoders.beam_search import beam_search
+from src.models.decoders.beam_search_dominik import beam_search_dominik
 
 import math
 
@@ -131,7 +131,17 @@ class DoggyT5Simple(nn.Module):
                 "perplexity": torch.exp(loss)}
 
     def generate_sequences(
-        self, num_sequences_per_input, inputs, y_init=None, temperature=1.0, batch_size=None, topk=1, beam_width=5, trim_to_eos=True, sample_method="topk"
+        self, 
+        num_sequences_per_input, 
+        inputs, 
+        y_init=None, 
+        temperature=1.0,
+        batch_size=None, 
+        topk=1, 
+        beam_width=5, 
+        trim_to_eos=True, 
+        sample_method="topk",
+        fixed_residues = None
     ):
         self.eval()
         with torch.no_grad():
@@ -145,7 +155,8 @@ class DoggyT5Simple(nn.Module):
                                         temperature = temperature, 
                                         batch_size = batch_size, 
                                         topk = topk, 
-                                        trim_to_eos = trim_to_eos
+                                        trim_to_eos = trim_to_eos,
+                                        fixed_residues = fixed_residues
                                         )
             elif sample_method == "beam":
                 samples, probabilities = self.beam_generator(num_sequences_per_input, 
@@ -154,7 +165,8 @@ class DoggyT5Simple(nn.Module):
                                         temperature = temperature, 
                                         batch_size = batch_size, 
                                         beam_width = beam_width, 
-                                        trim_to_eos = trim_to_eos
+                                        trim_to_eos = trim_to_eos,
+                                        fixed_residues = fixed_residues
                                         )
             else:
                 raise NotImplementedError()
@@ -174,7 +186,7 @@ class DoggyT5Simple(nn.Module):
             return samples, probabilities
     
     def beam_generator(
-            self, num_sequences_per_input, inputs, y_inits, temperature=1.0, batch_size=None, beam_width=1, trim_to_eos=True
+            self, num_sequences_per_input, inputs, y_inits, temperature=1.0, batch_size=None, beam_width=1, trim_to_eos=True, fixed_residues = None
     ):
         y_inits = y_inits.to(self.device)
         inputs = inputs.to(self.device)
@@ -183,22 +195,64 @@ class DoggyT5Simple(nn.Module):
         for i in range(len(inputs)):
             input = inputs[i].repeat(num_sequences_per_input, 1)
             y_init = y_inits[i].repeat(num_sequences_per_input, 1)
+
+            fixed_residues_i = fixed_residues[i] if fixed_residues is not None else None
             
-            out, probability = beam_search(self, input, Y_init = y_init, predictions=self.input_length, beam_width=beam_width, temperature=temperature)
+            out, probability = beam_search_dominik(
+                self, 
+                input, 
+                Y_init = y_init, 
+                predictions=self.input_length, 
+                input_length=self.input_length,
+                beam_width=beam_width, 
+                temperature=temperature,
+                tokenizer=self.tokenizer,
+                fixed_residues=fixed_residues_i,
+                device=self.device
+                )
             out = out.squeeze(0)
             probability = probability.squeeze(0)
+            # print(out)
+            # print(probability)
 
             if outputs == None:
-                outputs = out[-num_sequences_per_input:]
-                probabilities = probability[-num_sequences_per_input:]
+                outputs = out[:num_sequences_per_input]
+                probabilities = probability[:num_sequences_per_input]
+                print(outputs)
+                print(probabilities)
             else:
-                outputs = torch.cat((outputs, out[-num_sequences_per_input:]), dim=0)
-                probabilities = torch.cat((probabilities, probability[-num_sequences_per_input:]), dim=0)
+                outputs = torch.cat((outputs, out[:num_sequences_per_input]), dim=0)
+                probabilities = torch.cat((probabilities, probability[:num_sequences_per_input]), dim=0)
+                print(outputs)
+                print(probabilities)
 
         return outputs, probabilities
+    # def beam_generator(
+    #         self, num_sequences_per_input, inputs, y_inits, temperature=1.0, batch_size=None, beam_width=1, trim_to_eos=True
+    # ):
+    #     y_inits = y_inits.to(self.device)
+    #     inputs = inputs.to(self.device)
+    #     outputs = None
+    #     probabilities = None
+    #     for i in range(len(inputs)):
+    #         input = inputs[i].repeat(num_sequences_per_input, 1)
+    #         y_init = y_inits[i].repeat(num_sequences_per_input, 1)
+            
+    #         out, probability = beam_search(self, input, Y_init = y_init, predictions=self.input_length, beam_width=beam_width, temperature=temperature)
+    #         out = out.squeeze(0)
+    #         probability = probability.squeeze(0)
+
+    #         if outputs == None:
+    #             outputs = out[-num_sequences_per_input:]
+    #             probabilities = probability[-num_sequences_per_input:]
+    #         else:
+    #             outputs = torch.cat((outputs, out[-num_sequences_per_input:]), dim=0)
+    #             probabilities = torch.cat((probabilities, probability[-num_sequences_per_input:]), dim=0)
+
+    #     return outputs, probabilities
 
     def topk_generator(
-            self, num_sequences_per_input, inputs, y_init, temperature=1.0, batch_size=None, topk=1, trim_to_eos=True
+            self, num_sequences_per_input, inputs, y_init, temperature=1.0, batch_size=None, topk=1, trim_to_eos=True, fixed_residues = None
     ):
         with torch.no_grad():
             num_sequences = num_sequences_per_input * len(inputs)
@@ -227,13 +281,27 @@ class DoggyT5Simple(nn.Module):
                     out = F.softmax(out, dim=-1)
                     # out = F.log_softmax(out, dim=-1)
 
-                    out = torch.topk(out, topk)
-
-                    new_input_sequences_i = torch.multinomial(out.values, num_samples=1)
+                    top = torch.topk(out, topk)
                     
-                    # new_input_sequences = out.indices[0, new_input_sequences_i]
-                    new_input_sequences = out.indices[np.arange(out.indices.shape[0]), new_input_sequences_i.squeeze()]
-                    probability = torch.log(out.values[np.arange(out.values.shape[0]), new_input_sequences_i.squeeze()])
+                    
+                    # If we have fixed residues, we need to make sure that the we use the fixed residues
+                    if fixed_residues is not None:
+                        for j in range(len(fixed_residues)):
+                            if i in fixed_residues[j]:
+                                print(top.indices)
+                                test = self.tokenizer.decode(top.indices[j, 0])
+                                print(test)
+                                top.indices[j, 0] = self.tokenizer.encode(test, add_special_tokens=False)[1]
+                                # top.indices[j, 0] = self.tokenizer.encode(fixed_residues[j][i], add_special_tokens=False)[1]
+                                # top.indices[j, 0] = top.indices[j, 0]
+                                print(top.indices)
+                                top.values[j, 0] = out[j, top.indices[j, 0]]
+
+                    new_input_sequences_i = torch.multinomial(top.values, num_samples=1)
+
+                    # new_input_sequences = top.indices[0, new_input_sequences_i]
+                    new_input_sequences = top.indices[np.arange(top.indices.shape[0]), new_input_sequences_i.squeeze()]
+                    probability = torch.log(top.values[np.arange(top.values.shape[0]), new_input_sequences_i.squeeze()])
 
                     new_input_sequences = new_input_sequences.reshape(-1, 1)
                     probability = probability.reshape(-1, 1)
@@ -243,7 +311,8 @@ class DoggyT5Simple(nn.Module):
                     input_sequences = torch.cat(
                         (input_sequences, new_input_sequences), dim=1
                     )
-            
+            print(samples)
+            print(probabilities)
             return samples, probabilities
 
 class PositionalEncoder(nn.Module):
