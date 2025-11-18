@@ -25,7 +25,7 @@ eval "$(${EBROOTMINIFORGE3}/bin/conda shell.bash hook)"
 
 # Activate your conda environment
 # Define the path to your existing Conda environment (modify as appropriate)
-CONDA_ENV_NAME=spike_rna
+CONDA_ENV_NAME=doggifai
 # CONDA_ENV_PATH="/bask/projects/j/jlxi8926-auto-sum/dgrabarczyk/envs/${CONDA_ENV_NAME}"
 echo "Activating conda environment: ${CONDA_ENV_NAME}"
 conda activate ${CONDA_ENV_NAME}
