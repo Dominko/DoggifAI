@@ -1,4 +1,4 @@
-name: spike_rna
+name: doggifai
 channels:
   - anaconda
   - pytorch
